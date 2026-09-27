@@ -1,5 +1,7 @@
 import pytest
-from presidio_analyzer import AnalyzerEngine
+import spacy
+from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
+from presidio_analyzer.nlp_engine import NlpArtifacts
 from presidio_analyzer.predefined_recognizers.country_specific.korea import (
     KrFrnRecognizer,
     KrRrnRecognizer,
@@ -65,3 +67,29 @@ def test_uses_configured_similarity_factor(nlp_engine):
     text = "외국인등록번호는 900101-5234567"
     # 기본 점수 0.5 + 설정한 0.1 (하드코딩된 0.35가 아님)
     assert score(analyzer, text, "KR_FRN") == pytest.approx(0.6)
+
+
+def test_keeps_lemma_matching_for_non_korean_text():
+    # 다국어 엔진에서 한국어가 아닌 문서는 기본 강화기처럼 lemma로 비교해야 한다
+    doc = spacy.blank("en")("credit cards 4111111111111111")
+    lemmas = ["credit", "card", "4111111111111111"]  # "cards"의 lemma는 "card"
+    artifacts = NlpArtifacts(
+        entities=[],
+        tokens=doc,
+        tokens_indices=[token.idx for token in doc],
+        lemmas=lemmas,
+        nlp_engine=None,
+        language="en",
+    )
+    artifacts.keywords = lemmas
+    recognizer = PatternRecognizer(
+        supported_entity="CARD",
+        patterns=[Pattern("card", r"\d{16}", 0.5)],
+        context=["card"],
+    )
+    [raw] = recognizer.analyze(doc.text, ["CARD"])
+
+    enhancer = KoreanContextAwareEnhancer(context_matching_mode="whole_word")
+    [result] = enhancer.enhance_using_context(doc.text, [raw], artifacts, [recognizer])
+
+    assert result.score > raw.score
