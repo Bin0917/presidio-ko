@@ -21,6 +21,20 @@ BANK_FORMATS = [
 # 0으로 시작하는 이 모양은 전화번호(0XX-XXXX-XXXX)나 050X 안심번호다
 _PHONE_SHAPES = {(3, 3, 4), (3, 4, 4), (4, 3, 4), (4, 4, 4)}
 
+
+def _starts_with_date(groups):
+    """YYYY-M(M)-D(D)로 시작하는지 본다 (19xx·20xx년, 1~12월, 1~31일)."""
+    year, month, day = groups[:3]
+    return (
+        len(year) == 4
+        and year[:2] in ("19", "20")
+        and len(month) <= 2
+        and 1 <= int(month) <= 12
+        and len(day) <= 2
+        and 1 <= int(day) <= 31
+    )
+
+
 # 숫자·영문자 바로 뒤, "숫자+대시" 뒤에서는 시작하지 않고(더 긴 번호·ID의 일부)
 # 대시+숫자가 이어지면 끝나지 않는다. "신한-110-..."처럼 문자+대시 뒤는 허용한다.
 # \p{Pd}는 하이픈·en dash 등 유니코드 대시 (Presidio는 regex 모듈로 컴파일)
@@ -92,11 +106,12 @@ class KrBankAccountRecognizer(PatternRecognizer):
         Only the part in text that was detected by the regex engine
         :return: False if it cannot be an account number, None otherwise.
         """
-        shape = tuple(len(group) for group in re.split(r"\D", pattern_text))
+        groups = re.split(r"\D", pattern_text)
+        shape = tuple(len(group) for group in groups)
         if not 10 <= sum(shape) <= 14:
             return False
-        if shape[:3] == (4, 2, 2) or shape == (3, 2, 5):
-            return False  # 날짜(YYYY-MM-DD…), 사업자등록번호
+        if _starts_with_date(groups) or shape == (3, 2, 5):
+            return False  # 날짜(2024-01-15-…), 사업자등록번호
         if pattern_text[0] == "0" and shape in _PHONE_SHAPES:
             return False
         return None
