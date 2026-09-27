@@ -14,3 +14,6 @@ dependencies = ["presidio-analyzer>=2.2.364"]
 
 [project.optional-dependencies]
 test = ["pytest"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]

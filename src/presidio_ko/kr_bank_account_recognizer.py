@@ -23,11 +23,13 @@ _PHONE_SHAPES = {(3, 3, 4), (3, 4, 4), (4, 3, 4), (4, 4, 4)}
 
 # 숫자·영문자 바로 뒤, "숫자+대시" 뒤에서는 시작하지 않고(더 긴 번호·ID의 일부)
 # 대시+숫자가 이어지면 끝나지 않는다. "신한-110-..."처럼 문자+대시 뒤는 허용한다.
-# \p{Pd}는 하이픈·en dash 등 유니코드 대시 (Presidio는 패턴을 regex 모듈로 컴파일)
+# \p{Pd}는 하이픈·en dash 등 유니코드 대시 (Presidio는 regex 모듈로 컴파일)
 _START = r"(?<![\dA-Za-z])(?<!\d\p{Pd})"
 _END = r"(?!\p{Pd}?\d)"
 # 예: (3, 3, 6) → \d{3}\p{Pd}\d{3}\p{Pd}\d{6}
-_KNOWN = "|".join(r"\p{Pd}".join(rf"\d{{{n}}}" for n in shape) for shape in BANK_FORMATS)
+_KNOWN = "|".join(
+    r"\p{Pd}".join(rf"\d{{{n}}}" for n in shape) for shape in BANK_FORMATS
+)
 
 
 class KrBankAccountRecognizer(PatternRecognizer):
@@ -36,12 +38,13 @@ class KrBankAccountRecognizer(PatternRecognizer):
 
     - 은행별 표기 형식(BANK_FORMATS)과 그룹 자릿수가 맞으면 0.4
     - 그 밖의 3~4그룹 숫자열은 형식표에 없는 실제 계좌일 수 있어 0.1로 남긴다
-    - validate_result가 계좌일 수 없는 모양을 걸러낸다: 10~14자리가 아닌 것(날짜·카드번호),
-      날짜로 시작하는 것, 사업자등록번호(3-2-5), 0으로 시작하는 전화번호 모양
+    - validate_result가 계좌일 수 없는 모양을 걸러낸다: 10~14자리가 아닌 것
+      (날짜·카드번호), 날짜로 시작하는 것, 사업자등록번호(3-2-5),
+      0으로 시작하는 전화번호 모양
 
-    계좌번호 체크섬은 은행마다 다르고 공개돼 있지 않아 검증할 수 없다. 그래서 형식이 맞아도
-    점수를 올리지 않고 주변에 "계좌", "은행" 같은 단어가 있을 때만 올린다. 같은 모양의
-    주문번호·문서번호는 계좌로 오탐될 수 있다.
+    계좌번호 체크섬은 은행마다 다르고 공개돼 있지 않아 검증할 수 없다. 그래서
+    형식이 맞아도 점수를 올리지 않고 주변에 "계좌", "은행" 같은 단어가 있을 때만
+    올린다. 같은 모양의 주문번호·문서번호는 계좌로 오탐될 수 있다.
 
     :param patterns: List of patterns to be used by this recognizer
     :param context: List of context words to increase confidence in detection
