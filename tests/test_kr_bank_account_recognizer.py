@@ -44,22 +44,37 @@ def test_matches_bank_account_formats(account):
     [
         ("110-123-456789로 입금해 주세요", "110-123-456789"),
         ("계좌는110-123-456789입니다", "110-123-456789"),
+        ("신한-110-123-456789", "110-123-456789"),
+        ("KB-123456-78-901234", "123456-78-901234"),
+        ("110–123–456789", "110–123–456789"),  # en dash (PDF·OCR 추출문)
     ],
 )
-def test_matches_account_with_attached_particle(text, expected):
+def test_matches_account_in_surrounding_text(text, expected):
     assert found(text) == [expected]
+
+
+# 형식표 밖의 모양도 실제 계좌일 수 있으므로 버리지 않고 더 낮은 점수로 남긴다
+@pytest.mark.parametrize("account", ["123-45-6789-012", "123-456789-012"])
+def test_unlisted_format_is_kept_with_lower_score(account):
+    [unlisted] = analyze(account)
+    [known] = analyze("110-123-456789")
+    assert 0 < unlisted.score < known.score
 
 
 @pytest.mark.parametrize(
     "text",
     [
         "2024-01-15",  # 날짜
+        "2024-01-15-1030",  # 날짜+시각
         "123-45-67890",  # 사업자등록번호
         "010-1234-5678",  # 휴대폰
         "031-123-4567",  # 유선전화
+        "0504-1234-5678",  # 050X 안심번호
         "900101-1234567",  # 주민등록번호
         "1234-5678-9012-3456",  # 카드번호
+        "123-45-6789",  # 10자리 미만
         "123456789012",  # 구분자 없는 숫자열
+        "상품코드 SKU110-123-456789",  # 영숫자 코드
     ],
 )
 def test_ignores_non_account_numbers(text):
