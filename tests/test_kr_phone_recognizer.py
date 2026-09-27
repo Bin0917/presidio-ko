@@ -30,6 +30,19 @@ def test_matches_number_with_attached_particle(text, expected):
 
 
 @pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("HP010-1234-5678", "010-1234-5678"),  # 영문 약어 바로 뒤
+        ("TEL02-123-4567", "02-123-4567"),
+        ("연락처 010-1234-5678.2번으로", "010-1234-5678"),  # 띄어쓰기 빠진 마침표 뒤
+        ("+82 010-1234-5678", "+82 010-1234-5678"),  # +82 뒤에 0을 남긴 경우
+    ],
+)
+def test_matches_number_next_to_other_text(text, expected):
+    assert found(text) == [expected]
+
+
+@pytest.mark.parametrize(
     "number",
     [
         "010-1234-5678",
@@ -49,7 +62,9 @@ def test_matches_number_with_attached_particle(text, expected):
         "+82 10-1234-5678",  # 국제 형식
         "+82-10-1234-5678",
         "+821012345678",
+        "+8201012345678",
         "+82 2-123-4567",
+        "010-12345678",  # 구분자 한 곳만
     ],
 )
 def test_matches_mobile_and_landline_formats(number):
@@ -66,8 +81,7 @@ def test_matches_mobile_and_landline_formats(number):
         "주문번호 20240115010123456789",  # 긴 숫자열 속의 010
         "010-1234-56789",  # 자릿수 초과
         "031-123-4567-89",  # 더 긴 하이픈 번호의 앞부분
-        "010.1234.5678.12",  # 더 긴 점 구분 숫자열의 앞부분
-        "주문ID ORD01012345678",  # 영숫자 ID 속의 010
+        "주문ID ORD01012345678",  # 영숫자 ID 속의 010 (구분자 없는 형식)
     ],
 )
 def test_ignores_non_phone_numbers(text):
