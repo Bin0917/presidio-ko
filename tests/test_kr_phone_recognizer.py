@@ -42,6 +42,8 @@ def test_matches_number_with_attached_particle(text, expected):
         "031-123-4567",
         "064-1234-5678",
         "070-1234-5678",
+        "010–1234–5678",  # en dash (PDF·OCR 추출문)
+        "031‐123‐4567",  # 유니코드 하이픈 U+2010
     ],
 )
 def test_matches_mobile_and_landline_formats(number):
@@ -57,6 +59,8 @@ def test_matches_mobile_and_landline_formats(number):
         "0212345678",  # 구분자 없는 지역번호 모양 숫자열
         "주문번호 20240115010123456789",  # 긴 숫자열 속의 010
         "010-1234-56789",  # 자릿수 초과
+        "031-123-4567-89",  # 더 긴 하이픈 번호의 앞부분
+        "주문ID ORD01012345678",  # 영숫자 ID 속의 010
     ],
 )
 def test_ignores_non_phone_numbers(text):
