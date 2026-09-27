@@ -2,7 +2,7 @@ import pytest
 from presidio_analyzer import AnalyzerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 
-from presidio_ko import KrPhoneRecognizer
+from presidio_ko import KOREAN_RECOGNIZERS
 
 
 @pytest.fixture(scope="session")
@@ -15,5 +15,6 @@ def analyzer():
         }
     ).create_engine()
     analyzer = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["ko"])
-    analyzer.registry.add_recognizer(KrPhoneRecognizer())
+    for recognizer in KOREAN_RECOGNIZERS:
+        analyzer.registry.add_recognizer(recognizer)
     return analyzer
