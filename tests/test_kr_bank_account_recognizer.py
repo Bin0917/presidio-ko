@@ -100,3 +100,7 @@ def test_valid_format_keeps_low_score():
 )
 def test_context_word_raises_score(analyzer, text):
     assert score(analyzer, text) > score(analyzer, "110-123-456789")
+
+
+def test_empty_context_list_disables_context():
+    assert KrBankAccountRecognizer(context=[]).context == []

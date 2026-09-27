@@ -90,3 +90,7 @@ def test_unrelated_words_do_not_raise_score(analyzer):
 def test_context_word_far_before_number_is_ignored(analyzer):
     text = "전화 예약 확인 메일 발송 완료 고객 번호 목록 정리 010-1234-5678"
     assert score(analyzer, text) == score(analyzer, "010-1234-5678")
+
+
+def test_empty_context_list_disables_context():
+    assert KrPhoneRecognizer(context=[]).context == []

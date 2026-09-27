@@ -53,7 +53,7 @@ class KrPhoneRecognizer(PatternRecognizer):
         super().__init__(
             supported_entity=supported_entity,
             patterns=patterns if patterns else self.PATTERNS,
-            context=context if context else self.CONTEXT,
+            context=context if context is not None else self.CONTEXT,
             supported_language=supported_language,
             name=name,
         )
