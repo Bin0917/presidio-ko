@@ -17,11 +17,11 @@ presidio-analyzer 2.2.364 기준입니다.
 | `KR_RRN` 주민등록번호 | Presidio `KrRrnRecognizer` | 체크섬(mod 11), 지역코드 | 컨텍스트가 영어뿐 → [#2212](https://github.com/microsoft/presidio/issues/2212) |
 | `KR_FRN` 외국인등록번호 | Presidio `KrFrnRecognizer` | 체크섬 | |
 | `KR_BRN` 사업자등록번호 | Presidio `KrBrnRecognizer` | 체크섬 | |
-| `KR_PASSPORT` 여권번호 | Presidio `KrPassportRecognizer` | 형식 | 기본 `supported_language`가 `"kr"`이라 `language="ko"` 분석에서 빠짐. `KrPassportRecognizer(supported_language="ko")`로 등록 |
+| `KR_PASSPORT` 여권번호 | Presidio `KrPassportRecognizer` | 형식 | 2.2.364는 기본 `supported_language`가 `"kr"`이라 `language="ko"` 분석에서 빠짐. `KrPassportRecognizer(supported_language="ko")`로 등록 (main에서는 [#2170](https://github.com/microsoft/presidio/pull/2170)으로 수정, 미배포) |
 | `KR_DRIVER_LICENSE` 운전면허번호 | Presidio `KrDriverLicenseRecognizer` | 지역코드 | |
 | `PHONE_NUMBER` 전화번호(범용) | Presidio `PhoneRecognizer` | libphonenumber | `supported_regions=["KR"]`를 주면 한국 번호도 잡음(`+82` 국제 형식 포함). 기본 컨텍스트는 영어 |
 | **`KR_PHONE`** 휴대폰·유선전화 | **이 패키지** `KrPhoneRecognizer` | 형식 | 한국 번호 전용 엔티티, 한국어 컨텍스트 |
-| **`KR_BANK_ACCOUNT`** 계좌번호 | **이 패키지** `KrBankAccountRecognizer` | 형식(체크섬 불가) | 업스트림에 해당 recognizer 없음 |
+| **`KR_BANK_ACCOUNT`** 계좌번호 | **이 패키지** `KrBankAccountRecognizer` | 형식(체크섬 불가) | 업스트림 릴리스에는 없음. [#2215](https://github.com/microsoft/presidio/pull/2215) PR 진행 중 |
 | 컨텍스트 강화 | Presidio `LemmaContextAwareEnhancer` | | 컨텍스트 단어를 lemma와 비교해서 한국어에서는 대부분 실패 |
 | **한국어 컨텍스트 강화** | **이 패키지** `KoreanContextAwareEnhancer` | | 토큰 원문과 비교. 업스트림 한국형 recognizer에도 적용 |
 
@@ -138,6 +138,8 @@ lemma와 비교합니다. 그런데 한국어 spaCy 모델(`ko_core_news_*`)의 
 이슈는 `주민등록번호`, `주민번호`, `신분증`, `본인인증` 추가를 제안하고, 이를 반영한 PR
 [#2213](https://github.com/microsoft/presidio/pull/2213),
 [#2258](https://github.com/microsoft/presidio/pull/2258)이 열려 있습니다(2026-09-28 기준 미병합).
+lemma 분절이라는 근본 원인은 별도 이슈
+[#2216](https://github.com/microsoft/presidio/issues/2216)에서 논의 중입니다.
 
 **단어 추가만으로는 부족합니다.** 제안된 네 단어를 `CONTEXT`에 넣어도 기본 강화기는 lemma와
 비교하기 때문에 다섯 문장 중 두 문장에서만 점수가 오릅니다. `KoreanContextAwareEnhancer`를 함께
