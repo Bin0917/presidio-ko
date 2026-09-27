@@ -16,6 +16,9 @@ class KoreanContextAwareEnhancer(LemmaContextAwareEnhancer):
     spaCy 문서 언어가 ko일 때만 바꾸므로, 다국어 엔진의 다른 언어 문서는 기본 강화기와
     똑같이 동작한다.
 
+    기본 강화기가 주변 단어를 nlp_artifacts.lemmas·keywords에서 고른다는 동작에 기댄다
+    (presidio-analyzer 2.2.364에서 확인). 업스트림이 이 방식을 바꾸면 tests가 깨진다.
+
     사용: AnalyzerEngine(..., context_aware_enhancer=KoreanContextAwareEnhancer())
     """
 
