@@ -45,14 +45,20 @@ from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_analyzer.predefined_recognizers.country_specific.korea import (
     KrRrnRecognizer, KrFrnRecognizer, KrBrnRecognizer,
 )
-from presidio_ko import KrPhoneRecognizer, KrBankAccountRecognizer
+from presidio_ko import (
+    KoreanContextAwareEnhancer, KrPhoneRecognizer, KrBankAccountRecognizer,
+)
 
 # 기본 AnalyzerEngine()은 영어 모델만 올리므로 한국어 NLP 엔진을 넘겨서 만든다
 nlp_engine = NlpEngineProvider(nlp_configuration={
     "nlp_engine_name": "spacy",
     "models": [{"lang_code": "ko", "model_name": "ko_core_news_sm"}],
 }).create_engine()
-analyzer = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["ko"])
+analyzer = AnalyzerEngine(
+    nlp_engine=nlp_engine,
+    supported_languages=["ko"],
+    context_aware_enhancer=KoreanContextAwareEnhancer(),  # 한국어 컨텍스트 매칭
+)
 for r in [KrRrnRecognizer(), KrFrnRecognizer(), KrBrnRecognizer(),
           KrPhoneRecognizer(), KrBankAccountRecognizer()]:
     analyzer.registry.add_recognizer(r)

@@ -1,5 +1,4 @@
 import pytest
-from presidio_analyzer import PatternRecognizer
 
 from presidio_ko import KrPhoneRecognizer
 
@@ -87,21 +86,3 @@ def test_unrelated_words_do_not_raise_score(analyzer):
 def test_context_word_far_before_number_is_ignored(analyzer):
     text = "전화 예약 확인 메일 발송 완료 고객 번호 목록 정리 010-1234-5678"
     assert score(analyzer, text) == score(analyzer, "010-1234-5678")
-
-
-def test_boost_equals_presidio_default_and_is_applied_once(analyzer):
-    # lemma로도 컨텍스트가 잡히는 문장: 기본 강화기만 쓰는 recognizer와 점수가 같아야 한다
-    default = PatternRecognizer(
-        supported_entity="DEFAULT_ENHANCER",
-        supported_language="ko",
-        patterns=KrPhoneRecognizer.PATTERNS,
-        context=KrPhoneRecognizer.CONTEXT,
-    )
-    results = analyzer.analyze(
-        text="mobile 010-1234-5678",
-        language="ko",
-        entities=["KR_PHONE", "DEFAULT_ENHANCER"],
-        ad_hoc_recognizers=[default],
-    )
-    scores = {r.entity_type: r.score for r in results}
-    assert scores["KR_PHONE"] == scores["DEFAULT_ENHANCER"]

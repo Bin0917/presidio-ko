@@ -1,11 +1,9 @@
 from typing import List, Optional
 
-from presidio_analyzer import Pattern
-
-from ._context import SurfaceContextRecognizer
+from presidio_analyzer import Pattern, PatternRecognizer
 
 
-class KrBankAccountRecognizer(SurfaceContextRecognizer):
+class KrBankAccountRecognizer(PatternRecognizer):
     """
     하이픈으로 표기한 한국 은행 계좌번호를 인식한다.
 

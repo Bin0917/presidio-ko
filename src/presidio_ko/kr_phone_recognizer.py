@@ -1,11 +1,9 @@
 from typing import List, Optional
 
-from presidio_analyzer import Pattern
-
-from ._context import SurfaceContextRecognizer
+from presidio_analyzer import Pattern, PatternRecognizer
 
 
-class KrPhoneRecognizer(SurfaceContextRecognizer):
+class KrPhoneRecognizer(PatternRecognizer):
     """
     한국 전화번호(휴대폰, 지역번호 유선전화)를 인식한다.
 
