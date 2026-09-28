@@ -1,5 +1,7 @@
 # presidio-ko
 
+[![test](https://github.com/Bin0917/presidio-ko/actions/workflows/test.yml/badge.svg)](https://github.com/Bin0917/presidio-ko/actions/workflows/test.yml)
+
 [Microsoft Presidio](https://github.com/microsoft/presidio)에 **한국 전화번호(`KR_PHONE`)** 와
 **은행 계좌번호(`KR_BANK_ACCOUNT`)** recognizer, 그리고 한국어 문장에서 컨텍스트 단어가 제대로
 매칭되게 하는 **`KoreanContextAwareEnhancer`** 를 더하는 패키지입니다.
