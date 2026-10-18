@@ -6,6 +6,9 @@
 **은행 계좌번호(`KR_BANK_ACCOUNT`)** recognizer, 그리고 한국어 문장에서 컨텍스트 단어가 제대로
 매칭되게 하는 **`KoreanContextAwareEnhancer`** 를 더하는 패키지입니다.
 
+*English:* Korean phone number (`KR_PHONE`) and bank account (`KR_BANK_ACCOUNT`) recognizers for
+Microsoft Presidio, plus a context enhancer that makes Korean context words match.
+
 주민등록번호·외국인등록번호 같은 한국형 recognizer는 Presidio 업스트림에 체크섬 검증까지 이미
 들어 있으므로 다시 만들지 않고 그대로 가져다 씁니다. 이 패키지는 업스트림에 **없거나 한국어에서
 동작하지 않는 부분만** 채웁니다.
@@ -35,12 +38,12 @@ presidio-analyzer 2.2.364 기준입니다.
 ## 설치
 
 ```bash
-pip install -e .
+pip install presidio-ko
 python -m spacy download ko_core_news_sm
 ```
 
-PyPI에는 아직 올리지 않았으므로 이 저장소를 받아 설치합니다. `ko_core_news_sm`은 한국어 문장을
-분석하는 spaCy 모델입니다.
+`ko_core_news_sm`은 한국어 문장을 분석하는 spaCy 모델입니다. 개발용으로는 저장소를 받아
+`pip install -e ".[test]"`로 설치합니다.
 
 ## 사용 예시
 
