@@ -15,14 +15,14 @@ Microsoft Presidio, plus a context enhancer that makes Korean context words matc
 
 ## 업스트림에 이미 있는 것 vs 이 패키지가 채우는 것
 
-presidio-analyzer 2.2.364 기준입니다.
+presidio-analyzer 2.2.366 기준입니다. 2.2.364 이상에서 동작합니다.
 
 | 구분 | 제공 | 검증 | 비고 |
 |---|---|---|---|
 | `KR_RRN` 주민등록번호 | Presidio `KrRrnRecognizer` | 체크섬(mod 11), 지역코드 | 컨텍스트가 영어뿐 → [#2212](https://github.com/microsoft/presidio/issues/2212) |
 | `KR_FRN` 외국인등록번호 | Presidio `KrFrnRecognizer` | 체크섬 | |
 | `KR_BRN` 사업자등록번호 | Presidio `KrBrnRecognizer` | 체크섬 | |
-| `KR_PASSPORT` 여권번호 | Presidio `KrPassportRecognizer` | 형식 | 2.2.364는 기본 `supported_language`가 `"kr"`이라 `language="ko"` 분석에서 빠짐. `KrPassportRecognizer(supported_language="ko")`로 등록 (main에서는 [#2170](https://github.com/microsoft/presidio/pull/2170)으로 수정, 미배포) |
+| `KR_PASSPORT` 여권번호 | Presidio `KrPassportRecognizer` | 형식 | 2.2.364는 기본 `supported_language`가 `"kr"`이라 `language="ko"` 분석에서 빠짐. 2.2.365에서 수정([#2170](https://github.com/microsoft/presidio/pull/2170)). 2.2.364라면 `KrPassportRecognizer(supported_language="ko")`로 등록 |
 | `KR_DRIVER_LICENSE` 운전면허번호 | Presidio `KrDriverLicenseRecognizer` | 지역코드 | |
 | `PHONE_NUMBER` 전화번호(범용) | Presidio `PhoneRecognizer` | libphonenumber | `supported_regions=["KR"]`를 주면 한국 번호도 잡음(`+82` 국제 형식 포함). 기본 컨텍스트는 영어 |
 | **`KR_PHONE`** 휴대폰·유선전화 | **이 패키지** `KrPhoneRecognizer` | 형식 | 한국 번호 전용 엔티티, 한국어 컨텍스트 |
@@ -91,7 +91,7 @@ KR_BANK_ACCOUNT 123-456-789012 0.75
   한 줄로 바꿀 수 있습니다.
 - `AnalyzerEngine()`을 인자 없이 쓰면 영어 spaCy 모델만 `en`으로 올라가서, `language="ko"`로
   분석할 때 NLP 엔진이 `ko` 모델을 찾지 못해 `KeyError: 'ko'`로 실패합니다. 업스트림 한국형
-  recognizer도 (여권을 빼면) 기본 언어가 `ko`이므로 위처럼 한국어 NLP 엔진을 넘겨야 합니다.
+  recognizer도 기본 언어가 `ko`이므로 위처럼 한국어 NLP 엔진을 넘겨야 합니다.
 
 ## 한국어 컨텍스트 강화
 
@@ -142,7 +142,7 @@ lemma와 비교합니다. 그런데 한국어 spaCy 모델(`ko_core_news_*`)의 
 있어서, "주민등록번호: 900101-1234567" 같은 한국어 문서에서 컨텍스트로 점수가 오르지 않습니다.
 이슈는 `주민등록번호`, `주민번호`, `신분증`, `본인인증` 추가를 제안하고, 이를 반영한 PR
 [#2213](https://github.com/microsoft/presidio/pull/2213),
-[#2258](https://github.com/microsoft/presidio/pull/2258)이 열려 있습니다(2026-09-28 기준 미병합).
+[#2258](https://github.com/microsoft/presidio/pull/2258)이 열려 있습니다(2026-11-26 기준 미병합).
 lemma 분절이라는 근본 원인은 별도 이슈
 [#2216](https://github.com/microsoft/presidio/issues/2216)에서 논의 중입니다.
 
@@ -186,6 +186,8 @@ KrRrnRecognizer(context=KrRrnRecognizer.CONTEXT + ["주민등록번호", "주민
   없는 번호만 제외합니다
   (`ORD01012345678`은 ID로 보고, `HP010-1234-5678`은 잡습니다).
 - 구분자 없는 유선번호(`0212345678`)는 다른 숫자열과 구분하기 어려워 잡지 않습니다.
+- 전각 숫자(`０１０-１２３４-５６７８`)와 전각 `＋`도 같은 번호로 잡습니다. 계좌 recognizer도 같은
+  처리를 해서 전각 전화번호를 계좌로 오인하지 않습니다.
 - 잡지 않는 것: 괄호 지역번호 `(02) 123-4567`, `050X` 안심번호, `080`, `15XX` 대표번호.
 
 ### KR_BANK_ACCOUNT
@@ -223,7 +225,8 @@ KrRrnRecognizer(context=KrRrnRecognizer.CONTEXT + ["주민등록번호", "주민
 - 0으로 시작하는 전화번호 모양: `010-1234-5678`, `031-123-4567`, 안심번호 `0504-1234-5678`
 
 `신한-110-123-456789`처럼 은행명 뒤에 하이픈으로 붙여 쓴 경우는 잡고, 앞에 숫자·영문자가 바로
-붙은 코드(`SKU110-123-456789`)나 더 긴 번호의 일부는 잡지 않습니다. 구분자는 전화번호와 같이
+붙은 코드(`SKU110-123-456789`), `+` 뒤의 국제 전화번호(`+8210-1234-5678`), 더 긴
+번호의 일부는 잡지 않습니다. 구분자는 전화번호와 같이
 유니코드 대시를 허용합니다.
 
 #### 오탐 가능성

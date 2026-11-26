@@ -37,14 +37,18 @@ def _starts_with_date(groups):
     )
 
 
-# 숫자·영문자 바로 뒤, "숫자+대시" 뒤에서는 시작하지 않고(더 긴 번호·ID의 일부)
+# 숫자·영문자·"+" 바로 뒤, "숫자+대시" 뒤에서는 시작하지 않고
+# (더 긴 번호·ID, +82 전화번호의 일부)
 # 대시+숫자가 이어지면 끝나지 않는다. "신한-110-..."처럼 문자+대시 뒤는 허용한다.
 # \p{Pd}는 하이픈·en dash 등 유니코드 대시 (Presidio는 regex 모듈로 컴파일)
-_START = r"(?<![\dA-Za-z])(?<!\d\p{Pd})"
+_START = r"(?<![\dA-Za-z+])(?<!\d\p{Pd})"
 _END = r"(?!\p{Pd}?\d)"
-# 예: (3, 3, 6) → \d{3}\p{Pd}\d{3}\p{Pd}\d{6}
+# 숫자는 [0-9]만 본다. regex의 \d는 아랍 숫자 등도 받는데 전화번호 패턴은
+# 그렇지 않아, 그런 숫자로 쓴 전화번호가 계좌로 잡힌다.
+# 전각 숫자는 analyze()에서 ASCII로 바꾼 뒤 검사한다
+# 예: (3, 3, 6) → [0-9]{3}\p{Pd}[0-9]{3}\p{Pd}[0-9]{6}
 _KNOWN = "|".join(
-    r"\p{Pd}".join(rf"\d{{{n}}}" for n in shape) for shape in BANK_FORMATS
+    r"\p{Pd}".join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS
 )
 
 
@@ -74,7 +78,7 @@ class KrBankAccountRecognizer(PatternRecognizer):
         Pattern("KR Bank Account (known format)", _START + f"(?:{_KNOWN})" + _END, 0.4),
         Pattern(
             "KR Bank Account (other format)",
-            _START + r"\d{3,6}(?:\p{Pd}\d{1,7}){2,3}" + _END,
+            _START + r"[0-9]{3,6}(?:\p{Pd}[0-9]{1,7}){2,3}" + _END,
             0.1,
         ),
     ]

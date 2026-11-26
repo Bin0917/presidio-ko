@@ -109,3 +109,12 @@ def test_context_word_raises_score(analyzer, text):
 
 def test_empty_context_list_disables_context():
     assert KrBankAccountRecognizer(context=[]).context == []
+
+
+# 국제 형식 전화번호의 일부나 전각 이외의 유니코드 숫자는 계좌로 잡지 않는다
+@pytest.mark.parametrize(
+    "text", ["연락처 +8210-1234-5678", "+82010-1234-5678", "٠١٠-١٢٣٤-٥٦٧٨"]
+)
+def test_ignores_international_phone_and_non_ascii_digits(analyzer, text):
+    results = analyzer.analyze(text=text, language="ko", entities=["KR_BANK_ACCOUNT"])
+    assert results == []
