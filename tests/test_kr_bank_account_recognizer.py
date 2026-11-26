@@ -118,3 +118,9 @@ def test_empty_context_list_disables_context():
 def test_ignores_international_phone_and_non_ascii_digits(analyzer, text):
     results = analyzer.analyze(text=text, language="ko", entities=["KR_BANK_ACCOUNT"])
     assert results == []
+
+
+def test_matches_account_after_plus_that_is_not_country_code(analyzer):
+    text = "계좌+110-123-456789"
+    results = analyzer.analyze(text=text, language="ko", entities=["KR_BANK_ACCOUNT"])
+    assert [text[r.start : r.end] for r in results] == ["110-123-456789"]
