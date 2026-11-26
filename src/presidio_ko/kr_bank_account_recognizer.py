@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer
 
-from .kr_phone_recognizer import FULL_WIDTH
+from .kr_phone_recognizer import DASH, FULL_WIDTH
 
 # 은행별 하이픈 표기 형식(그룹별 자릿수). 출처는 README 참고.
 BANK_FORMATS = [
@@ -22,6 +22,8 @@ BANK_FORMATS = [
 
 # 0으로 시작하는 이 모양은 전화번호(0XX-XXXX-XXXX)나 050X 안심번호다
 _PHONE_SHAPES = {(3, 3, 4), (3, 4, 4), (4, 3, 4), (4, 4, 4)}
+# 휴대폰 앞자리. 이걸로 시작하는 3그룹 10~11자리는 자릿수를 잘못 끊은 휴대폰 번호다
+_MOBILE_PREFIXES = ("010", "011", "016", "017", "018", "019")
 
 
 def _starts_with_date(groups):
@@ -40,16 +42,14 @@ def _starts_with_date(groups):
 # 숫자·영문자 바로 뒤, "숫자+대시" 뒤, "+82"의 82에서는 시작하지 않고
 # (더 긴 번호·ID, 국제 형식 전화번호의 일부)
 # 대시+숫자가 이어지면 끝나지 않는다. "신한-110-..."처럼 문자+대시 뒤는 허용한다.
-# \p{Pd}는 하이픈·en dash 등 유니코드 대시 (Presidio는 regex 모듈로 컴파일)
-_START = r"(?<![\dA-Za-z])(?<!\d\p{Pd})(?!(?<=\+)82)"
-_END = r"(?!\p{Pd}?\d)"
+# 대시는 전화번호와 같은 정의(유니코드 대시와 빼기 기호 U+2212)
+_START = rf"(?<![\dA-Za-z])(?<!\d{DASH})(?!(?<=\+)82)"
+_END = rf"(?!{DASH}?\d)"
 # 숫자는 [0-9]만 본다. regex의 \d는 아랍 숫자 등도 받는데 전화번호 패턴은
 # 그렇지 않아, 그런 숫자로 쓴 전화번호가 계좌로 잡힌다.
 # 전각 숫자는 analyze()에서 ASCII로 바꾼 뒤 검사한다
-# 예: (3, 3, 6) → [0-9]{3}\p{Pd}[0-9]{3}\p{Pd}[0-9]{6}
-_KNOWN = "|".join(
-    r"\p{Pd}".join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS
-)
+# 예: (3, 3, 6) → [0-9]{3}대시[0-9]{3}대시[0-9]{6}
+_KNOWN = "|".join(DASH.join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS)
 
 
 class KrBankAccountRecognizer(PatternRecognizer):
@@ -78,7 +78,7 @@ class KrBankAccountRecognizer(PatternRecognizer):
         Pattern("KR Bank Account (known format)", _START + f"(?:{_KNOWN})" + _END, 0.4),
         Pattern(
             "KR Bank Account (other format)",
-            _START + r"[0-9]{3,6}(?:\p{Pd}[0-9]{1,7}){2,3}" + _END,
+            _START + rf"[0-9]{{3,6}}(?:{DASH}[0-9]{{1,7}}){{2,3}}" + _END,
             0.1,
         ),
     ]
@@ -125,4 +125,10 @@ class KrBankAccountRecognizer(PatternRecognizer):
             return False  # 날짜(2024-01-15-…), 사업자등록번호
         if pattern_text[0] == "0" and shape in _PHONE_SHAPES:
             return False
+        if (
+            pattern_text.startswith(_MOBILE_PREFIXES)
+            and len(shape) == 3
+            and sum(shape) <= 11
+        ):
+            return False  # 010-123-45678처럼 자릿수를 잘못 끊은 휴대폰
         return None

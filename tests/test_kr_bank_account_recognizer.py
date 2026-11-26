@@ -124,3 +124,14 @@ def test_matches_account_after_plus_that_is_not_country_code(analyzer):
     text = "계좌+110-123-456789"
     results = analyzer.analyze(text=text, language="ko", entities=["KR_BANK_ACCOUNT"])
     assert [text[r.start : r.end] for r in results] == ["110-123-456789"]
+
+
+@pytest.mark.parametrize(
+    "text", ["010-123-45678", "010-12345-678", "011-1234-567", "(02) 123-4567"]
+)
+def test_ignores_phone_like_numbers(text):
+    assert found(text) == []
+
+
+def test_matches_account_with_minus_sign_separator():
+    assert found("계좌 110−123−456789") == ["110−123−456789"]
