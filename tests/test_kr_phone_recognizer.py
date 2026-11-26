@@ -172,6 +172,7 @@ def test_matches_common_document_formats(text, expected):
         "080-123-4567",  # 수신자부담
         "(2024) 123-4567",  # 괄호 안이 지역번호가 아님
         "0509-123-4567",  # 050X 범위 밖
+        "2024-02) 1234-5678",  # 더 긴 하이픈 번호의 꼬리
     ],
 )
 def test_ignores_line_split_and_business_numbers(text):

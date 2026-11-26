@@ -24,7 +24,7 @@ _START = rf"(?<!\d)(?<!\d{DASH})"
 _END = rf"(?!{DASH}?\d)"
 _LOCAL = rf"\d{{3,4}}{_SEP}\d{{4}}"
 # 괄호 지역번호: (02) 123-4567, 02)123-4567
-_PAREN = r"(?:\(|(?<![\d(]))0"
+_PAREN = rf"(?:\(|(?<![\d(])(?<!\d{DASH}))0"
 
 
 class KrPhoneRecognizer(PatternRecognizer):
