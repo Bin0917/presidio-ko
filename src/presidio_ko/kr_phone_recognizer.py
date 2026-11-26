@@ -2,6 +2,11 @@ from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer
 
+# 전각 숫자와 ＋를 ASCII로 바꾼다. 패턴의 0·1·+ 리터럴과 계좌 필터의 "0" 비교는
+# ASCII만 보므로, 그대로 두면 전각 전화번호가 계좌로 잡힌다.
+# 한 글자씩 바꾸므로 결과 위치가 원문과 같다
+FULL_WIDTH = str.maketrans("０１２３４５６７８９＋", "0123456789+")
+
 
 class KrPhoneRecognizer(PatternRecognizer):
     r"""
@@ -66,4 +71,9 @@ class KrPhoneRecognizer(PatternRecognizer):
             context=context if context is not None else self.CONTEXT,
             supported_language=supported_language,
             name=name,
+        )
+
+    def analyze(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        return super().analyze(
+            text.translate(FULL_WIDTH), entities, nlp_artifacts, regex_flags
         )

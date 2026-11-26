@@ -117,3 +117,20 @@ def test_context_word_far_before_number_is_ignored(analyzer):
 
 def test_empty_context_list_disables_context():
     assert KrPhoneRecognizer(context=[]).context == []
+
+
+# 전각 숫자(PDF·일본어 입력기 등)도 같은 번호로 잡고, 계좌로 오인하지 않는다
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("연락처 ０１０-１２３４-５６７８로", "０１０-１２３４-５６７８"),
+        ("＋８２ １０－１２３４－５６７８", "＋８２ １０－１２３４－５６７８"),
+    ],
+)
+def test_matches_full_width_digits(analyzer, text, expected):
+    results = analyzer.analyze(
+        text=text, language="ko", entities=["KR_PHONE", "KR_BANK_ACCOUNT"]
+    )
+    assert [(r.entity_type, text[r.start : r.end]) for r in results] == [
+        ("KR_PHONE", expected)
+    ]

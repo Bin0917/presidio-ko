@@ -3,6 +3,8 @@ from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer
 
+from .kr_phone_recognizer import FULL_WIDTH
+
 # 은행별 하이픈 표기 형식(그룹별 자릿수). 출처는 README 참고.
 BANK_FORMATS = [
     (3, 2, 6),  # 신한(구)·SC제일·대구
@@ -93,6 +95,11 @@ class KrBankAccountRecognizer(PatternRecognizer):
             context=context if context is not None else self.CONTEXT,
             supported_language=supported_language,
             name=name,
+        )
+
+    def analyze(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        return super().analyze(
+            text.translate(FULL_WIDTH), entities, nlp_artifacts, regex_flags
         )
 
     def validate_result(self, pattern_text: str) -> Optional[bool]:
