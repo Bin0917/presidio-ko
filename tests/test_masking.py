@@ -4,7 +4,7 @@ from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
 import presidio_ko
-from presidio_ko import korean_mask
+from presidio_ko import Pseudonymizer, korean_mask
 from presidio_ko.masking import korean_operators
 
 
@@ -147,3 +147,45 @@ def test_operators_are_not_exported_at_the_top_level():
     # 기본 AnonymizerEngine.anonymize에 넘기면 공백으로 이웃한 같은 종류가 합쳐져 샌다
     assert "korean_operators" not in presidio_ko.__all__
     assert not hasattr(presidio_ko, "korean_operators")
+
+
+@pytest.mark.parametrize(
+    ("text", "masked", "pseudonymized"),
+    [
+        ("서울 종로구 종로1가 1", "서울 종로구 종로1가 *", "[주소1]"),
+        (
+            "서울 중구 충무로2가 60-1, 101호",
+            "서울 중구 충무로2가 **-*, ***호",
+            "[주소1]",
+        ),
+        (
+            "주소: 서울 중구 을지로3가 100 을지빌딩 502호",
+            "주소: 서울 중구 을지로3가 *** 을지빌딩 ***호",
+            "주소: [주소1]",
+        ),
+        ("서울 종로구 종로3가 1번지 3층", "서울 종로구 종로3가 *번지 *층", "[주소1]"),
+        (
+            "서울 강남구 테헤란로 152,010-1234-5678",
+            "서울 강남구 테헤란로 ***,010-1234-****",
+            "[주소1],[전화번호1]",
+        ),
+        (
+            "경기도 양평군 양평읍 양평로 100, 02-302-7957",
+            "경기도 양평군 양평읍 양평로 ***, 02-302-****",
+            "[주소1], [전화번호1]",
+        ),
+        (
+            "연락처 010 1234 5678 010 2345 6789",
+            "연락처 010 1234 **** 010 2345 ****",
+            "연락처 [전화번호1] [전화번호2]",
+        ),
+    ],
+)
+def test_review_repros_mask_every_detected_character(
+    korean_analyzer, text, masked, pseudonymized
+):
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == masked
+    pseudonymizer = Pseudonymizer()
+    assert pseudonymizer.pseudonymize(text, results) == pseudonymized
+    assert pseudonymizer.restore(pseudonymized) == text
