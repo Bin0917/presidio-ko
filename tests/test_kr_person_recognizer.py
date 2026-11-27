@@ -78,3 +78,21 @@ def test_other_field_labels_after_a_name_label_are_not_people():
 def test_bank_names_and_districts_are_not_people(korean_analyzer):
     assert found(korean_analyzer, "엄마: 용돈 보냈다 신한 110-234-567890 맞지?") == []
     assert found(korean_analyzer, "주소 대전광역시 유성구 대학로 99") == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "김치찌개 2인분 주문했어요.",
+        "김밥천국에서 점심을 먹었다",
+        "택배 송장번호 6123-4567-8901 조회",
+        "주문번호 조회 김밥 먹자",
+    ],
+)
+def test_foods_and_lookup_words_are_not_people(korean_analyzer, text):
+    assert found(korean_analyzer, text) == []
+
+
+def test_four_letter_names_need_a_compound_surname():
+    assert labeled("성명: 남궁민수") == [("남궁민수", 0.85)]
+    assert labeled("성명: 김치찌개") == []

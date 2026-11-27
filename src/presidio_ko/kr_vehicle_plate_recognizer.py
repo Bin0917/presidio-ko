@@ -18,7 +18,7 @@ class KrVehiclePlateRecognizer(KoreanPatternRecognizer):
     PATTERNS = [
         Pattern(
             "KR Vehicle Plate",
-            rf"(?:(?:{_REGION})\s?)?{START}\d{{2,3}}\s?[{_USE}]\s?\d{{4}}{END}",
+            rf"(?:(?:{_REGION})\s?)?{START}\d{{2,3}}\s?[{_USE}]\s?\d{{4}}{END}(?!원)",
             0.5,
         )
     ]

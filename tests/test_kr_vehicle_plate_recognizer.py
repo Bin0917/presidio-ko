@@ -35,6 +35,7 @@ def test_matches_plates(plate):
         "1234가 5678",  # 앞 숫자가 4자리
         "12라 345",
         "12일 3456",  # 용도문자가 아님
+        "10가 5000원이면 싸다",  # 가격
     ],
 )
 def test_ignores_non_plates(text):

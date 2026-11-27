@@ -37,8 +37,9 @@ _FIELD_WORDS = set(
     성함 이체 이메일 주소 주민 송금 계좌 담당자 수신인 대표자 환자명 보호자
     근로자 사용자 상담사 수령인 문의 이용자 입금 출금 거래 금액 일시 번호
     사원 환자 보호 근로 임대 임차 주문 송장 고객명 연락처 연락 전화번호 휴대폰
-    핸드폰 신한 국민 우리 하나 기업 신협 우체국 신용""".split()
+    핸드폰 신한 국민 우리 하나 기업 신협 우체국 신용 조회 김밥 김치""".split()
 )
+_COMPOUND_SURNAMES = ("남궁", "황보", "제갈", "선우", "서문", "독고", "사공")
 _LABELED = regex.compile(
     r"(?:성명|이름|예금주|고객명|대표자|대표이사|담당자|수신인|받는\s?분|보내는\s?분"
     r"|임대인|임차인|근로자|환자명|보호자)[은는]?"
@@ -63,6 +64,8 @@ def _is_name(word: str) -> bool:
         regex.fullmatch(r"[가-힣]{2,4}", word) is not None
         and word[0] in _SURNAMES
         and word not in _FIELD_WORDS
+        # 네 글자 이름은 복성뿐이다. "김치찌개", "김밥천국"을 거른다
+        and (len(word) < 4 or word.startswith(_COMPOUND_SURNAMES))
     )
 
 
