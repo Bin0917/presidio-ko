@@ -115,6 +115,20 @@ def test_ignores_non_addresses(text):
     assert found(text) == []
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "서울 강남구 테헤란로 152,010-1234-5678",
+        "서울 강남구 테헤란로 152, 123-45-67890",
+        "경기도 양평군 양평읍 양평로 100, 02-302-7957",
+        "서울 강남구 테헤란로 152, 880214-1234567",
+    ],
+)
+def test_number_after_a_comma_is_not_read_as_a_unit(text):
+    # 쉼표 뒤 "101-1203" 같은 동-호는 받지만, 더 긴 번호의 앞부분은 받지 않는다
+    assert [a for a, _ in found(text)] == [text[: text.index(",")]]
+
+
 def test_address_label_allows_a_missing_province():
     text = "주소: 분당구 판교역로 235"
     assert found(text) == [("분당구 판교역로 235", 0.6)]
