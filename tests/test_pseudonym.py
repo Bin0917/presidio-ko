@@ -54,3 +54,23 @@ def test_overlapping_results_keep_the_higher_score():
         RecognizerResult("PERSON", 0, 4, 0.9),
     ]
     assert Pseudonymizer().pseudonymize(text, results) == "[이름1]10"
+
+
+def test_numbers_skip_placeholders_already_in_the_text():
+    text = "답장 양식은 [이름1]님 안녕하세요 입니다. 고객 김민수"
+    start = text.index("김민수")
+    pseudonymizer = Pseudonymizer()
+    masked = pseudonymizer.pseudonymize(
+        text, [RecognizerResult("PERSON", start, start + 3, 0.85)]
+    )
+    assert masked.endswith("[이름2]")
+    assert pseudonymizer.restore(masked) == text
+
+
+def test_numbers_skip_placeholders_seen_in_earlier_messages():
+    pseudonymizer = Pseudonymizer()
+    pseudonymizer.pseudonymize("[이름1]", [])
+    masked = pseudonymizer.pseudonymize(
+        "김민수", [RecognizerResult("PERSON", 0, 3, 0.85)]
+    )
+    assert masked == "[이름2]"
