@@ -112,3 +112,21 @@ def test_full_width_characters_are_detected_at_their_original_place(
     korean_analyzer, text, entity, value
 ):
     assert (entity, value) in found(korean_analyzer, text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["전화 02 123 4567 3577 5180 8602 6315", "전화 02 123 4567 6011 9799 3811 9103"],
+)
+def test_card_after_a_phone_is_found_when_a_candidate_crosses_the_phone(
+    korean_analyzer, text
+):
+    assert found(korean_analyzer, text) >= {
+        ("KR_PHONE", "02 123 4567"),
+        ("CREDIT_CARD", text[15:]),
+    }
+
+
+def test_card_right_after_a_mobile_prefix_is_found(korean_analyzer):
+    text = "연락처 010 4111 1111 1111 1111"
+    assert ("CREDIT_CARD", "4111 1111 1111 1111") in found(korean_analyzer, text)
