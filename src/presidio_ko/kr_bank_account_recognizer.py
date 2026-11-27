@@ -31,6 +31,16 @@ _START = START + r"(?<![A-Za-z])(?!(?<=\+)82)"
 # 숫자는 [0-9]만 본다. regex의 \d는 아랍 숫자 등도 받는데 전화번호 패턴은
 # ASCII만 보므로, 그런 숫자로 쓴 전화번호가 계좌로 잡힌다
 _KNOWN = "|".join(DASH.join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS)
+# 구분자 없는 계좌는 숫자열일 뿐이라 계좌·은행 라벨 바로 뒤에서만 받는다
+_LABEL = (
+    r"(?<=(?:계좌(?:번호)?|은행|뱅크|예금주[	\p{Zs}]*\S+)[은는]?"
+    r"[	\p{Zs}]*[:：]?[	\p{Zs}]*)"
+)
+# "하나", "우리"처럼 일상어와 겹치는 은행 약칭은 컨텍스트 단어로 두면 "우리는 주문번호
+# 2024-123-456789"까지 점수가 오른다. 은행별 형식표와 맞는 번호 바로 앞에 올 때만 받는다
+_BANK_PREFIX = (
+    r"(?<=(?:국민|신한|우리|하나|기업|산업|토스)[	\p{Zs}]*[:：]?[	\p{Zs}]*)"
+)
 
 
 def _starts_with_date(groups):
@@ -64,13 +74,54 @@ class KrBankAccountRecognizer(KoreanPatternRecognizer):
     PATTERNS = [
         Pattern("KR Bank Account (known format)", _START + f"(?:{_KNOWN})" + END, 0.4),
         Pattern(
+            "KR Bank Account (after bank name)",
+            _BANK_PREFIX + _START + f"(?:{_KNOWN})" + END,
+            0.6,
+        ),
+        Pattern(
             "KR Bank Account (other format)",
             _START + rf"[0-9]{{3,6}}(?:{DASH}[0-9]{{1,7}}){{2,3}}" + END,
             0.1,
         ),
+        Pattern(
+            "KR Bank Account (after label)",
+            _LABEL + START + rf"[0-9]{{10,14}}{END}",
+            0.4,
+        ),
+        Pattern(
+            "KR Bank Account (space separated, after label)",
+            _LABEL
+            + START
+            + r"[0-9]{3,6}(?:[	\p{Zs}][0-9]{2,7}){2,3}"
+            + END
+            + r"(?![	\p{Zs}]\d)",
+            0.4,
+        ),
     ]
 
-    CONTEXT = ["계좌", "계좌번호", "은행", "입금", "account", "bank"]
+    CONTEXT = [
+        "계좌",
+        "계좌번호",
+        "은행",
+        "입금",
+        "account",
+        "bank",
+        "농협",
+        "수협",
+        "신협",
+        "우체국",
+        "새마을",
+        "카카오뱅크",
+        "케이뱅크",
+        "토스뱅크",
+        "SC제일",
+        "씨티",
+        "예금주",
+        "뱅크",
+        "송금",
+        "이체",
+        "환불",
+    ]
 
     def validate_result(self, pattern_text: str) -> Optional[bool]:
         """
@@ -84,9 +135,9 @@ class KrBankAccountRecognizer(KoreanPatternRecognizer):
         digits = sum(shape)
         if not 10 <= digits <= 14:
             return False  # 날짜·카드번호
-        if _starts_with_date(groups) or shape == (3, 2, 5):
+        if (len(groups) >= 3 and _starts_with_date(groups)) or shape == (3, 2, 5):
             return False  # 날짜(2024-01-15-…), 사업자등록번호
-        if pattern_text[0] == "0" and shape in _PHONE_SHAPES:
+        if pattern_text[0] == "0" and (shape in _PHONE_SHAPES or len(shape) == 1):
             return False
         if (
             pattern_text.startswith(_MOBILE_PREFIXES)

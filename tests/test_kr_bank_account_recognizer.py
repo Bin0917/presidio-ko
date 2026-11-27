@@ -118,3 +118,50 @@ def test_context_word_raises_score(analyzer, text):
 
 def test_empty_context_list_disables_context():
     assert KrBankAccountRecognizer(context=[]).context == []
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("급여계좌: 110 123 456789 (신한은행)", "110 123 456789"),
+        ("환불 계좌번호 3333041234567 입니다", "3333041234567"),
+        ("계좌는 1002123456789입니다", "1002123456789"),
+        ("카카오뱅크 3333041234567", "3333041234567"),
+        ("신한은행 110 123 456789", "110 123 456789"),
+        ("예금주 홍길동 1002123456789", "1002123456789"),
+        ("입금계좌：123456 78 901234", "123456 78 901234"),
+    ],
+)
+def test_matches_unhyphenated_account_after_label(text, expected):
+    assert found(text) == [expected]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "주문번호 1234567890",  # 라벨 없음
+        "계좌 01012345678",  # 휴대폰
+        "계좌 010 1234 5678",
+        "계좌 안내 문서번호 12345678901",  # 라벨이 바로 앞이 아님
+        "계좌 123456789",  # 10자리 미만
+        "계좌 123456789012345",  # 14자리 초과
+    ],
+)
+def test_ignores_unhyphenated_numbers_without_account_label(text):
+    assert found(text) == []
+
+
+def test_bank_name_alone_is_enough_for_context(korean_analyzer):
+    text = "국민 123456-78-901234"
+    [result] = korean_analyzer.analyze(
+        text=text, language="ko", entities=["KR_BANK_ACCOUNT"]
+    )
+    assert result.score >= 0.5
+
+
+def test_common_word_does_not_boost_a_document_number(korean_analyzer):
+    text = "우리는 주문번호 2024-123-456789 를 확인했다"
+    [result] = korean_analyzer.analyze(
+        text=text, language="ko", entities=["KR_BANK_ACCOUNT"]
+    )
+    assert result.score < 0.5
