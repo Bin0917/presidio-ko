@@ -1,3 +1,5 @@
+import logging
+
 from presidio_ko import create_korean_analyzer
 
 
@@ -31,3 +33,12 @@ def test_detects_rrn_and_bank_account(korean_analyzer):
 def test_creating_the_analyzer_logs_no_warnings(caplog):
     create_korean_analyzer()
     assert not [r for r in caplog.records if r.levelname == "WARNING"]
+
+
+def test_creating_the_analyzer_leaves_the_logger_level_alone():
+    logger = logging.getLogger("presidio-analyzer")
+    before = logger.getEffectiveLevel()
+    create_korean_analyzer()
+    create_korean_analyzer()
+    assert logger.isEnabledFor(logging.WARNING)
+    assert logger.getEffectiveLevel() == before
