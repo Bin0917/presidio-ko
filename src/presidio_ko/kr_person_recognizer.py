@@ -37,7 +37,8 @@ _FIELD_WORDS = set(
     """고객 고객명 국민 금액 기업 김밥 김치 문의 사용자 사원
     사원명 서명 성명 성함 송금 송장 신용 신한 신협 연락 연락처
     우리 우체국 이름 이메일 이용자 이체 임대 임대인 임차 임차인
-    조회 주문 주민 주소 하나 신청인 주소지 정보 변경""".split()
+    조회 주문 주민 주소 하나 신청인 주소지 정보 변경 전화 한도
+    지정 정지 정정""".split()
 )
 _COMPOUND_SURNAMES = ("남궁", "황보", "제갈", "선우", "서문", "독고", "사공")
 # "주문자 정보", "대표 전화"처럼 뒤에 일반어가 흔한 라벨은 "주문자명"만 받는다
@@ -61,11 +62,18 @@ def _strip_suffix(word: str) -> str:
     return word
 
 
+def _is_field_word(word: str) -> bool:
+    # 세 글자 이상에서만 조사를 떼므로 "정보를"은 그대로 들어온다
+    return word in _FIELD_WORDS or any(
+        word.endswith(s) and word[: -len(s)] in _FIELD_WORDS for s in _SUFFIXES
+    )
+
+
 def _is_name(word: str) -> bool:
     return (
         re.fullmatch(r"[가-힣]{2,4}", word) is not None
         and word[0] in _SURNAMES
-        and word not in _FIELD_WORDS
+        and not _is_field_word(word)
         # 네 글자 이름은 복성뿐이다. "김치찌개", "김밥천국"을 거른다
         and (len(word) < 4 or word.startswith(_COMPOUND_SURNAMES))
     )
