@@ -66,3 +66,12 @@ def test_field_labels_are_not_people(korean_analyzer):
 
 def test_romanized_foreign_name_is_out_of_scope(korean_analyzer):
     assert found(korean_analyzer, "임차인 Nguyen Van An 입니다") == []
+
+
+def test_other_field_labels_after_a_name_label_are_not_people():
+    assert labeled("보호자 연락처: 010-6543-2109") == []
+
+
+def test_bank_names_and_districts_are_not_people(korean_analyzer):
+    assert found(korean_analyzer, "엄마: 용돈 보냈다 신한 110-234-567890 맞지?") == []
+    assert found(korean_analyzer, "주소 대전광역시 유성구 대학로 99") == []

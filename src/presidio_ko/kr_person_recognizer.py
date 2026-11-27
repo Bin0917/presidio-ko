@@ -36,12 +36,15 @@ _FIELD_WORDS = set(
     """주문번호 송장번호 이체일시 임대인 임차인 사원명 서명 성명 대표 고객 이름
     성함 이체 이메일 주소 주민 송금 계좌 담당자 수신인 대표자 환자명 보호자
     근로자 사용자 상담사 수령인 문의 이용자 입금 출금 거래 금액 일시 번호
-    사원 환자 보호 근로 임대 임차 주문 송장 고객명""".split()
+    사원 환자 보호 근로 임대 임차 주문 송장 고객명 연락처 연락 전화번호 휴대폰
+    핸드폰 신한 국민 우리 하나 기업 신협 우체국 신용""".split()
 )
 _LABELED = regex.compile(
     r"(?:성명|이름|예금주|고객명|대표자|대표이사|담당자|수신인|받는\s?분|보내는\s?분"
     r"|임대인|임차인|근로자|환자명|보호자)[은는]?[ \t]*[:：]?[ \t]*([가-힣]+)"
 )
+# spaCy가 "유성구" 같은 지명을 인물로 잡는다. 라벨 뒤 이름에는 적용하지 않는다
+_PLACE_ENDINGS = ("시", "군", "구")
 _PS_LABELS = {"PS", "PERSON"}
 
 
@@ -92,7 +95,7 @@ class KrPersonRecognizer(EntityRecognizer):
         for ent in entities_found:
             if ent.label_ in _PS_LABELS:
                 name = _strip_suffix(ent.text.strip())
-                if _is_name(name):
+                if _is_name(name) and not name.endswith(_PLACE_ENDINGS):
                     start = ent.start_char + ent.text.index(name)
                     spans[start, start + len(name)] = 0.6
         for match in _LABELED.finditer(text):
