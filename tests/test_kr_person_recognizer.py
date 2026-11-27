@@ -180,3 +180,29 @@ def test_name_ending_in_a_particle_letter_after_a_vowel_keeps_its_score(name):
 
 def test_name_ending_in_a_topic_particle_after_a_final_consonant_scores_low():
     assert labeled("예금주 김정은") == [("김정은", 0.4)]
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("예금주가 홍길동입니다", "홍길동"),
+        ("수취인이 이영희", "이영희"),
+        ("성함은 홍길동님입니다", "홍길동"),
+        ("보호자께서 김민수님이세요", "김민수"),
+        ("담당자가 박하은입니다", "박하은"),
+    ],
+)
+def test_label_followed_by_a_subject_particle(text, name):
+    assert labeled(text) == [(name, 0.85)]
+
+
+@pytest.mark.parametrize(
+    ("text", "word"),
+    [
+        ("성함이 정말이에요", "정말"),
+        ("성명은 공란입니다", "공란"),
+        ("이름이 정상이고", "정상"),
+    ],
+)
+def test_two_letter_word_before_an_ending_after_a_label_scores_low(text, word):
+    assert labeled(text) == [(word, 0.4)]
