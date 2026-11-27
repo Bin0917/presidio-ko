@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "presidio-ko"
-version = "0.1.0"
-description = "Korean phone number and bank account recognizers and a Korean context enhancer for Microsoft Presidio"
+version = "0.2.0"
+description = "Korean PII detection, Korean-style masking and reversible pseudonymization for Microsoft Presidio"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
-dependencies = ["presidio-analyzer>=2.2.364"]
+dependencies = ["presidio-analyzer>=2.2.364", "presidio-anonymizer>=2.2.364"]
 keywords = ["presidio", "pii", "korean", "anonymization", "privacy"]
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -2,38 +2,13 @@
 
 [![test](https://github.com/Bin0917/presidio-ko/actions/workflows/test.yml/badge.svg)](https://github.com/Bin0917/presidio-ko/actions/workflows/test.yml)
 
-[Microsoft Presidio](https://github.com/microsoft/presidio)에 **한국 전화번호(`KR_PHONE`)** 와
-**은행 계좌번호(`KR_BANK_ACCOUNT`)** recognizer, 그리고 한국어 문장에서 컨텍스트 단어가 제대로
-매칭되게 하는 **`KoreanContextAwareEnhancer`** 를 더하는 패키지입니다.
+[Microsoft Presidio](https://github.com/microsoft/presidio)로 한국어 문서의 개인정보를 찾고,
+한국식으로 가리고, LLM에 보낼 때는 되돌릴 수 있게 바꾸는 패키지입니다. 함수 한 번으로 한국어
+분석기를 만들고(`create_korean_analyzer`), 개인정보위 권고 방식의 부분 마스킹(`korean_operators`)과
+되돌릴 수 있는 가명 치환(`Pseudonymizer`)을 씁니다.
 
-*English:* Korean phone number (`KR_PHONE`) and bank account (`KR_BANK_ACCOUNT`) recognizers for
-Microsoft Presidio, plus a context enhancer that makes Korean context words match.
-
-주민등록번호·외국인등록번호 같은 한국형 recognizer는 Presidio 업스트림에 체크섬 검증까지 이미
-들어 있으므로 다시 만들지 않고 그대로 가져다 씁니다. 이 패키지는 업스트림에 **없거나 한국어에서
-동작하지 않는 부분만** 채웁니다.
-
-## 업스트림에 이미 있는 것 vs 이 패키지가 채우는 것
-
-presidio-analyzer 2.2.366 기준입니다. 2.2.364 이상에서 동작합니다.
-
-| 구분 | 제공 | 검증 | 비고 |
-|---|---|---|---|
-| `KR_RRN` 주민등록번호 | Presidio `KrRrnRecognizer` | 체크섬(mod 11), 지역코드 | 컨텍스트가 영어뿐 → [#2212](https://github.com/microsoft/presidio/issues/2212) |
-| `KR_FRN` 외국인등록번호 | Presidio `KrFrnRecognizer` | 체크섬 | |
-| `KR_BRN` 사업자등록번호 | Presidio `KrBrnRecognizer` | 체크섬 | |
-| `KR_PASSPORT` 여권번호 | Presidio `KrPassportRecognizer` | 형식 | 2.2.364는 기본 `supported_language`가 `"kr"`이라 `language="ko"` 분석에서 빠짐. 2.2.365에서 수정([#2170](https://github.com/microsoft/presidio/pull/2170)). 2.2.364라면 `KrPassportRecognizer(supported_language="ko")`로 등록 |
-| `KR_DRIVER_LICENSE` 운전면허번호 | Presidio `KrDriverLicenseRecognizer` | 지역코드 | |
-| `PHONE_NUMBER` 전화번호(범용) | Presidio `PhoneRecognizer` | libphonenumber | `supported_regions=["KR"]`를 주면 한국 번호도 잡음(`+82` 국제 형식 포함). 기본 컨텍스트는 영어 |
-| **`KR_PHONE`** 휴대폰·유선전화 | **이 패키지** `KrPhoneRecognizer` | 형식 | 한국 번호 전용 엔티티, 한국어 컨텍스트 |
-| **`KR_BANK_ACCOUNT`** 계좌번호 | **이 패키지** `KrBankAccountRecognizer` | 형식(체크섬 불가) | 업스트림 릴리스에는 없음. [#2215](https://github.com/microsoft/presidio/pull/2215) PR 진행 중 |
-| 컨텍스트 강화 | Presidio `LemmaContextAwareEnhancer` | | 컨텍스트 단어를 lemma와 비교해서 한국어에서는 대부분 실패 |
-| **한국어 컨텍스트 강화** | **이 패키지** `KoreanContextAwareEnhancer` | | 토큰 원문과 비교. 업스트림 한국형 recognizer에도 적용 |
-
-한국 번호를 `PHONE_NUMBER`로만 잡아도 된다면 업스트림
-`PhoneRecognizer(supported_regions=["KR"], supported_language="ko")`로 충분합니다.
-`KrPhoneRecognizer`는 한국 번호를 별도 엔티티로 다루고 한국어 컨텍스트로 점수를 올리고 싶을 때
-씁니다.
+*English:* Korean PII detection, Korean-style partial masking, and reversible pseudonymization
+for LLM prompts on top of Microsoft Presidio.
 
 ## 설치
 
@@ -45,19 +20,126 @@ python -m spacy download ko_core_news_sm
 `ko_core_news_sm`은 한국어 문장을 분석하는 spaCy 모델입니다. 개발용으로는 저장소를 받아
 `pip install -e ".[test]"`로 설치합니다.
 
-## 사용 예시
+## 빠른 시작
+
+```python
+from presidio_anonymizer import AnonymizerEngine
+
+from presidio_ko import Pseudonymizer, create_korean_analyzer, korean_operators
+
+analyzer = create_korean_analyzer()
+text = "예금주 김민수, 연락처 010-1234-5678, 서울 영등포구 영등포로3길 12, 101동 1001호"
+results = analyzer.analyze(text=text, language="ko")
+
+# 한국식 부분 마스킹
+print(AnonymizerEngine().anonymize(text, results, korean_operators()).text)
+
+# 되돌릴 수 있는 가명 치환: LLM에는 자리표시자만 보내고 응답에서 원문을 복원한다
+pseudonymizer = Pseudonymizer()
+prompt = pseudonymizer.pseudonymize(text, results)
+print(prompt)
+print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠습니다."))
+```
+
+출력:
+
+```
+예금주 김*수, 연락처 010-1234-****, 서울 영등포구 영등포로3길 **, ***동 ****호
+예금주 [이름1], 연락처 [전화번호1], [주소1]
+김민수님께 010-1234-5678로 연락드리겠습니다.
+```
+
+- `create_korean_analyzer(model_name="ko_core_news_sm", nlp_engine=None)`은 한국어 spaCy 엔진,
+  아래 표의 인식기, `KoreanContextAwareEnhancer`를 모두 켠 `AnalyzerEngine`을 돌려줍니다.
+  업스트림 `PhoneRecognizer`와 `SpacyRecognizer`는 같은 번호·사람을 `PHONE_NUMBER`와
+  `PERSON`으로 한 번 더 보고하므로 뺍니다.
+- `Pseudonymizer`는 한 대화에 하나를 씁니다. 같은 원문은 같은 자리표시자를 받고 번호는 호출을
+  넘어 이어집니다. `restore`는 자신이 발급한 자리표시자만 바꾸고 LLM이 만든 다른 `[..]`는 그대로
+  둡니다. 자리표시자의 한국어 이름은 `presidio_ko._common.ENTITY_LABELS`에 있습니다.
+
+## 탐지하는 개인정보
+
+| 엔티티 | 설명 | 출처 | 비고 |
+|---|---|---|---|
+| `PERSON` | 이름 | **이 패키지** `KrPersonRecognizer` | 성명·예금주 같은 라벨 뒤 0.85, spaCy 인물 0.6. 성씨 표와 양식 라벨 차단어로 거름 |
+| `KR_ADDRESS` | 주소 | **이 패키지** `KrAddressRecognizer` | 시도(생략 가능) + 시군구 + 도로명·건물번호, 지번은 시도 필수. 건물명은 제외 |
+| `KR_PHONE` | 휴대폰·유선전화 | **이 패키지** `KrPhoneRecognizer` | `+82` 국제 형식 포함 |
+| `KR_BANK_ACCOUNT` | 계좌번호 | **이 패키지** `KrBankAccountRecognizer` | 은행명·라벨 컨텍스트, 구분자 없는 번호는 라벨 뒤만 |
+| `KR_VEHICLE_PLATE` | 차량번호 | **이 패키지** `KrVehiclePlateRecognizer` | `12가 3456`, `서울12가3456` |
+| `KR_HEALTH_INSURANCE` | 건강보험증번호 | **이 패키지** `KrHealthInsuranceRecognizer` | 공개 표준이 없어 `건강보험증번호` 같은 라벨 뒤 숫자만 |
+| `KR_RRN` `KR_FRN` `KR_BRN` | 주민·외국인·사업자등록번호 | Presidio 업스트림 | 체크섬 검증 |
+| `KR_PASSPORT` `KR_DRIVER_LICENSE` | 여권·운전면허번호 | Presidio 업스트림 | |
+| `CREDIT_CARD` `EMAIL_ADDRESS` 등 | 카드·이메일 등 | Presidio 업스트림 | `ko`로 등록 |
+
+## 한국식 마스킹
+
+`korean_operators()`는 `AnonymizerEngine.anonymize(operators=...)`에 넘기는 설정입니다.
+개인정보보호위원회 권고와 ISMS-P 관행대로 구분자(대시·공백·점)는 두고 글자·숫자만 `*`로 바꿉니다.
+
+| 엔티티 | 규칙 | 예 |
+|---|---|---|
+| `PERSON` | 첫째·셋째 글자만 표시 | 홍길동 → 홍\*동, 남궁민수 → 남\*민\* |
+| `KR_PHONE` | 마지막 4자리 | 010-1234-5678 → 010-1234-\*\*\*\* |
+| `KR_RRN` `KR_FRN` | 생년월일과 성별 1자리만 | 900101-1234567 → 900101-1\*\*\*\*\*\* |
+| `KR_BANK_ACCOUNT` | 첫 묶음과 마지막 2자리만 | 110-123-456789 → 110-\*\*\*-\*\*\*\*89 |
+| `KR_ADDRESS` | 도로명·지번 뒤 첫 번호부터 숫자 | 영등포로3길 12, 101동 → 영등포로3길 \*\*, \*\*\*동 |
+| `EMAIL_ADDRESS` | 앞 2자만 | nguyen@example.com → ng\*\*\*\*@example.com |
+| `CREDIT_CARD` | 앞 6자리와 뒤 4자리 | 4111-1111-1111-1111 → 4111-11\*\*-\*\*\*\*-1111 |
+| `KR_VEHICLE_PLATE` | 마지막 4자리 중 앞 2자리 | 12가 3456 → 12가 \*\*56 |
+| 그 밖 | `<ENTITY>`로 치환 | `<KR_BRN>` |
+
+주소는 상세 시작점을 인식기가 알려주지 않으므로 마스킹이 도로명·지번 뒤 첫 번호를 다시 찾아
+숫자만 가립니다(`동`·`호` 같은 단위 글자는 남습니다). 규칙을 바꾸려면 딕셔너리를 덮어씁니다.
+
+```python
+from presidio_anonymizer.entities import OperatorConfig
+
+operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
+```
+
+## 한계
+
+- **외국인 이름**: 영문 로마자 이름(`Nguyen Van An`)은 잡지 않습니다. 한국어 이름도 성씨 표에
+  없는 성이나 라벨·spaCy 단서가 없는 문맥(명함의 `과장 정재현`, 호칭만 붙은 `홍길동님`)에서는
+  놓칠 수 있습니다. `ko_core_news_sm`의 인물 인식이 약해서입니다.
+- **주소**: 건물명과 `OO빌딩` 이후는 포함하지 않고, 시도 없는 지번 주소는 잡지 않습니다.
+- **계좌번호**: 체크섬이 없어 형식만 봅니다. 같은 모양의 주문번호·송장번호는 낮은 점수(0.1~0.4)로
+  잡힐 수 있습니다. `score_threshold=0.5`로 거르는 방법은 [KR_BANK_ACCOUNT](#kr_bank_account)에
+  있습니다.
+- **차량번호**: `호` 용도문자(렌터카)는 호수(`101호 1234`)와 구별할 수 없어 뺍니다.
+- **건강보험증번호**: 라벨이 없으면 잡지 않습니다.
+- **업스트림이 같이 내는 엔티티**: `URL`(이메일 도메인), `DATE_TIME` 등은 그대로 나옵니다.
+  필요 없으면 `analyze(entities=[...])`로 고르세요.
+
+## 업스트림에 이미 있는 것 vs 이 패키지가 채우는 것
+
+presidio-analyzer 2.2.366 기준입니다. 2.2.364 이상에서 동작합니다.
+
+| 구분 | 제공 | 검증 | 비고 |
+|---|---|---|---|
+| `KR_RRN` 주민등록번호 | Presidio `KrRrnRecognizer` | 체크섬(mod 11), 지역코드 | 컨텍스트가 영어뿐 → [#2212](https://github.com/microsoft/presidio/issues/2212) |
+| `KR_FRN` 외국인등록번호 | Presidio `KrFrnRecognizer` | 체크섬 | |
+| `KR_BRN` 사업자등록번호 | Presidio `KrBrnRecognizer` | 체크섬 | |
+| `KR_PASSPORT` 여권번호 | Presidio `KrPassportRecognizer` | 형식 | 2.2.364는 기본 `supported_language`가 `"kr"`이라 `language="ko"` 분석에서 빠짐. 2.2.365에서 수정([#2170](https://github.com/microsoft/presidio/pull/2170)). `create_korean_analyzer`는 `"ko"`로 등록 |
+| `KR_DRIVER_LICENSE` 운전면허번호 | Presidio `KrDriverLicenseRecognizer` | 지역코드 | |
+| `PHONE_NUMBER` 전화번호(범용) | Presidio `PhoneRecognizer` | libphonenumber | `KR_PHONE`과 같은 번호를 이중 보고해서 `create_korean_analyzer`는 뺍니다 |
+| **`KR_PHONE`** 휴대폰·유선전화 | **이 패키지** `KrPhoneRecognizer` | 형식 | 한국 번호 전용 엔티티, 한국어 컨텍스트 |
+| **`KR_BANK_ACCOUNT`** 계좌번호 | **이 패키지** `KrBankAccountRecognizer` | 형식(체크섬 불가) | 업스트림 릴리스에는 없음. [#2215](https://github.com/microsoft/presidio/pull/2215) PR 진행 중 |
+| 컨텍스트 강화 | Presidio `LemmaContextAwareEnhancer` | | 컨텍스트 단어를 lemma와 비교해서 한국어에서는 대부분 실패 |
+| **한국어 컨텍스트 강화** | **이 패키지** `KoreanContextAwareEnhancer` | | 토큰 원문과 비교. 업스트림 한국형 recognizer에도 적용 |
+
+## 직접 조립하기
+
+`create_korean_analyzer`를 쓰지 않고 엔진을 직접 만들 수도 있습니다. 기본 `AnalyzerEngine()`은
+영어 모델만 올리므로 `language="ko"`로 분석하면 `KeyError: 'ko'`로 실패합니다. 한국어 NLP 엔진을
+넘기고, `presidio_ko.KOREAN_RECOGNIZERS`를 등록하세요.
 
 ```python
 from presidio_analyzer import AnalyzerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
-from presidio_analyzer.predefined_recognizers.country_specific.korea import (
-    KrRrnRecognizer, KrFrnRecognizer, KrBrnRecognizer,
-)
-from presidio_ko import (
-    KoreanContextAwareEnhancer, KrPhoneRecognizer, KrBankAccountRecognizer,
-)
 
-# 기본 AnalyzerEngine()은 영어 모델만 올리므로 한국어 NLP 엔진을 넘겨서 만든다
+from presidio_ko import KOREAN_RECOGNIZERS, KoreanContextAwareEnhancer
+
 nlp_engine = NlpEngineProvider(nlp_configuration={
     "nlp_engine_name": "spacy",
     "models": [{"lang_code": "ko", "model_name": "ko_core_news_sm"}],
@@ -65,33 +147,14 @@ nlp_engine = NlpEngineProvider(nlp_configuration={
 analyzer = AnalyzerEngine(
     nlp_engine=nlp_engine,
     supported_languages=["ko"],
-    context_aware_enhancer=KoreanContextAwareEnhancer(),  # 한국어 컨텍스트 매칭
+    context_aware_enhancer=KoreanContextAwareEnhancer(),
 )
-for r in [KrRrnRecognizer(), KrFrnRecognizer(), KrBrnRecognizer(),
-          KrPhoneRecognizer(), KrBankAccountRecognizer()]:
-    analyzer.registry.add_recognizer(r)
-
-text = "제 연락처는 010-1234-5678이고 계좌는 123-456-789012 이에요"
-results = analyzer.analyze(text=text, language="ko")
-for r in results:
-    print(r.entity_type, text[r.start:r.end], round(r.score, 2))
+for recognizer in KOREAN_RECOGNIZERS:
+    analyzer.registry.add_recognizer(recognizer)
 ```
 
-출력:
-
-```
-KR_PHONE 010-1234-5678 0.85
-KR_BANK_ACCOUNT 123-456-789012 0.75
-```
-
-- 이 패키지의 두 recognizer만 등록하려면 `presidio_ko.KOREAN_RECOGNIZERS`를 쓰면 됩니다.
-- `context_aware_enhancer`를 빼면 `연락처는`이 매칭되지 않아 `KR_PHONE`이 0.5에 머뭅니다
-  ([한국어 컨텍스트 강화](#한국어-컨텍스트-강화) 참고). 경고 없이 조용히 약해지므로 꼭
-  넣으세요. 이미 만든 엔진이라면 `analyzer.context_aware_enhancer = KoreanContextAwareEnhancer()`
-  한 줄로 바꿀 수 있습니다.
-- `AnalyzerEngine()`을 인자 없이 쓰면 영어 spaCy 모델만 `en`으로 올라가서, `language="ko"`로
-  분석할 때 NLP 엔진이 `ko` 모델을 찾지 못해 `KeyError: 'ko'`로 실패합니다. 업스트림 한국형
-  recognizer도 기본 언어가 `ko`이므로 위처럼 한국어 NLP 엔진을 넘겨야 합니다.
+`context_aware_enhancer`를 빼면 `연락처는` 같은 컨텍스트 단어가 매칭되지 않아 점수가 올라가지
+않습니다. 경고 없이 조용히 약해지므로 꼭 넣으세요.
 
 ## 한국어 컨텍스트 강화
 
@@ -224,7 +287,7 @@ KrRrnRecognizer(context=KrRrnRecognizer.CONTEXT + ["주민등록번호", "주민
 [나무위키 계좌번호](https://namu.wiki/w/%EA%B3%84%EC%A2%8C%EB%B2%88%ED%98%B8). 은행이 형식을
 바꿨거나 출처가 틀렸을 수 있어서, 형식표에 없는 모양도 버리지 않고 "그 밖" 단계로 남깁니다.
 
-계좌번호일 수 없는 모양은 `validate_result`가 제외합니다.
+계좌번호일 수 없는 모양은 `validate_result`가 제외합니다(구분자 없는 번호는 `0`으로 시작하면 휴대폰으로 봅니다).
 
 - 10~14자리가 아닌 것: 날짜 `2024-01-15`, 카드번호 `1234-5678-9012-3456`
 - 날짜로 시작하는 것(19xx·20xx년, 1~12월, 1~31일): `2024-01-15-1030`, `2024-1-5-1030`
@@ -247,8 +310,13 @@ KrRrnRecognizer(context=KrRrnRecognizer.CONTEXT + ["주민등록번호", "주민
 - 같은 모양의 다른 번호는 계좌로 오탐됩니다. 예를 들어 `주문번호 2024-123-456789`(4-3-6)는
   `KR_BANK_ACCOUNT` 0.4로 잡힙니다. "그 밖" 단계(0.1)는 대시로 이은 10~14자리 숫자열이면 대부분
   걸리므로 문서번호·상품번호 오탐이 더 많습니다.
-- 잡지 못하는 것: 하이픈 없는 계좌번호(`123456789012`, 일반 숫자열과 구분 불가), 공백 구분,
-  10자리 미만의 짧은 계좌.
+- 하이픈 없는 계좌번호(`123456789012`)와 공백으로 나눈 번호(`110 123 456789`)는 `계좌`,
+  `계좌번호`, `은행`, `뱅크`, `예금주 이름` 바로 뒤에서만 잡습니다(0.4). 일반 숫자열과 구분할 수
+  없어서입니다. 10자리 미만의 짧은 계좌는 잡지 못합니다.
+- 컨텍스트에는 은행명(`카카오뱅크`, `농협`, `우체국` 등)과 `예금주`, `송금`, `이체`, `환불`도
+  넣었습니다. `우리`, `하나`처럼 일상어와 겹치는 약칭(`국민`, `신한`, `기업`, `산업`, `토스`
+  포함)은 컨텍스트 단어로 두면 `우리는 주문번호 2024-123-456789`까지 0.75로 올라서, 은행별
+  형식에 맞는 번호 바로 앞에 올 때만 받습니다(`국민 123456-78-901234`는 0.6).
 
 `score_threshold=0.5`로 분석하면 컨텍스트 없는 형식표 일치(0.4)와 "그 밖" 단계(최대 0.45)는
 걸러지고, 형식표 일치에 컨텍스트가 붙은 것(0.75)만 남습니다. 다만 컨텍스트 윈도가 문장 경계를
@@ -263,9 +331,8 @@ pytest
 ```
 
 - `ko_core_news_sm`이 없으면 Presidio가 첫 실행 때 자동으로 내려받습니다(네트워크 필요).
-- 단위 테스트 외에 실제 `AnalyzerEngine` + `ko_core_news_sm`으로 컨텍스트 강화를 확인하는 통합
-  테스트가 있습니다(`tests/test_korean_context_enhancer.py`는 업스트림 recognizer와 #2212 제안
-  단어까지 확인). 이 README의 사용 예시도 그대로 실행해 위 출력과 같은지 확인합니다
+- 단위 테스트 외에 실제 `AnalyzerEngine` + `ko_core_news_sm`으로 컨텍스트 강화와 `create_korean_analyzer`를
+  확인하는 통합 테스트가 있습니다. 이 README의 빠른 시작도 그대로 실행해 위 출력과 같은지 확인합니다
   (`tests/test_readme.py`).
 
 ## 라이선스
