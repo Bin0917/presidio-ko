@@ -21,6 +21,7 @@ class Pseudonymizer:
         self.mapping: dict[str, str] = {}
         self._placeholders: dict[tuple[str, str], str] = {}
         self._reserved: set[str] = set()
+        self._numbers: dict[str, int] = {}
 
     def pseudonymize(self, text: str, results: list[RecognizerResult]) -> str:
         self._reserved.update(_PLACEHOLDER.findall(text))
@@ -38,11 +39,12 @@ class Pseudonymizer:
     def _placeholder(self, entity: str, original: str) -> str:
         if (entity, original) not in self._placeholders:
             label = ENTITY_LABELS.get(entity, entity)
-            count = sum(k[0] == entity for k in self._placeholders)
-            placeholder = f"[{label}{count + 1}]"
+            number = self._numbers.get(entity, 0) + 1
+            placeholder = f"[{label}{number}]"
             while placeholder in self._reserved or placeholder in self.mapping:
-                count += 1
-                placeholder = f"[{label}{count + 1}]"
+                number += 1
+                placeholder = f"[{label}{number}]"
+            self._numbers[entity] = number
             self._placeholders[entity, original] = placeholder
             self.mapping[placeholder] = original
         return self._placeholders[entity, original]

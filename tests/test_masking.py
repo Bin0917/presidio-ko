@@ -97,6 +97,21 @@ def test_korean_mask_keeps_the_higher_scored_of_overlapping_results():
     assert korean_mask(text, results) == "번호 110-***-****89"
 
 
+def test_korean_mask_merges_overlapping_results_of_one_entity(korean_analyzer):
+    # 주소 결과가 "…을지로2"(0.6)와 "…을지로2가 50"(0.5) 둘로 나온다
+    text = "서울 중구 을지로2가 50"
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == "서울 중구 을지로2가 **"
+
+
+def test_korean_mask_masks_the_remainder_of_a_partial_loser():
+    results = [
+        RecognizerResult("PERSON", 0, 4, 0.9),
+        RecognizerResult("KR_PHONE", 3, 6, 0.5),
+    ]
+    assert korean_mask("홍길동010", results) == "홍*동***"
+
+
 def test_korean_mask_takes_custom_operators():
     results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
     operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}

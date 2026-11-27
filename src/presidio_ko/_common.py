@@ -1,3 +1,4 @@
+import heapq
 from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
@@ -38,12 +39,46 @@ END = rf"(?!{DASH}?\d)"
 
 
 def drop_overlaps(results: List[RecognizerResult]) -> List[RecognizerResult]:
-    """겹치는 결과 중 점수가 높고 긴 것만 남겨 위치 순으로 돌려준다."""
+    """
+    겹치는 결과를 겹치지 않게 정리해 위치 순으로 돌려준다.
+    입력이 덮던 글자는 정리 뒤에도 모두 덮인다.
+
+    - 같은 종류끼리 겹치면 합친다. 점수는 높은 쪽이다.
+    - 다른 종류가 다른 결과를 완전히 품으면 바깥 결과만 남긴다.
+    - 일부만 겹치면 점수(같으면 길이)가 높은 쪽을 남기고,
+      진 쪽은 겹치지 않는 조각으로 남긴다.
+    """
+    merged: List[RecognizerResult] = []
+    for r in sorted(results, key=lambda r: (r.entity_type, r.start)):
+        m = merged[-1] if merged else None
+        if m and m.entity_type == r.entity_type and r.start < m.end:
+            merged[-1] = _cut(m, m.start, max(m.end, r.end), max(m.score, r.score))
+        else:
+            merged.append(r)
+    # 진 쪽 조각은 지금 보는 위치보다 뒤에서 시작하므로 힙에 다시 넣어도 순서가 유지된다
+    heap = [(r.start, -r.end, i, r) for i, r in enumerate(merged)]
+    heapq.heapify(heap)
+    count = len(heap)
     kept: List[RecognizerResult] = []
-    for r in sorted(results, key=lambda r: (-r.score, r.start - r.end, r.start)):
-        if all(r.end <= k.start or k.end <= r.start for k in kept):
+    while heap:
+        r = heapq.heappop(heap)[3]
+        k = kept[-1] if kept else None
+        if k is None or k.end <= r.start:
             kept.append(r)
-    return sorted(kept, key=lambda r: r.start)
+        elif r.end <= k.end:
+            if (r.start, r.end) == (k.start, k.end) and r.score > k.score:
+                kept[-1] = r
+        elif (r.score, r.end - r.start) > (k.score, k.end - k.start):
+            kept[-1] = _cut(k, k.start, r.start, k.score)
+            kept.append(r)
+        else:
+            heapq.heappush(heap, (k.end, -r.end, count, _cut(r, k.end, r.end, r.score)))
+            count += 1
+    return kept
+
+
+def _cut(r: RecognizerResult, start: int, end: int, score: float) -> RecognizerResult:
+    return RecognizerResult(r.entity_type, start, end, score)
 
 
 class KoreanPatternRecognizer(PatternRecognizer):
