@@ -5,43 +5,32 @@ from presidio_analyzer import Pattern
 
 from ._common import COLON_GAP, DASH, END, GAP, START, KoreanPatternRecognizer
 
-# 은행별 하이픈 표기 형식(그룹별 자릿수). 출처는 README 참고.
 BANK_FORMATS = [
-    (3, 2, 6),  # 신한(구)·SC제일·대구
-    (3, 3, 6),  # 신한·케이뱅크·신협·제주
-    (4, 3, 6),  # 우리·광주
-    (6, 2, 6),  # KB국민·우체국
-    (3, 6, 5),  # 하나
-    (4, 2, 7),  # 카카오뱅크
-    (4, 4, 4),  # 토스뱅크·수협
-    (3, 4, 4, 2),  # NH농협·부산
-    (3, 4, 4, 3),  # KDB산업
-    (3, 6, 2, 3),  # IBK기업
-    (3, 2, 6, 1),  # 대구
+    (3, 2, 6),
+    (3, 3, 6),
+    (4, 3, 6),
+    (6, 2, 6),
+    (3, 6, 5),
+    (4, 2, 7),
+    (4, 4, 4),
+    (3, 4, 4, 2),
+    (3, 4, 4, 3),
+    (3, 6, 2, 3),
+    (3, 2, 6, 1),
 ]
 
-# 0으로 시작하는 이 모양은 전화번호(0XX-XXXX-XXXX)나 050X 안심번호다
 _PHONE_SHAPES = {(3, 3, 4), (3, 4, 4), (4, 3, 4), (4, 4, 4)}
 _MOBILE_PREFIXES = ("010", "011", "016", "017", "018", "019")
 
-# 숫자·영문자 바로 뒤, "숫자+대시" 뒤, "+82"의 82에서는 시작하지 않는다
-# (더 긴 번호·ID, 국제 형식 전화번호의 일부).
-# "신한-110-..."처럼 문자+대시 뒤는 허용한다.
 _START = START + r"(?<![A-Za-z])(?!(?<=\+)82)"
-# 숫자는 [0-9]만 본다. regex의 \d는 아랍 숫자 등도 받는데 전화번호 패턴은
-# ASCII만 보므로, 그런 숫자로 쓴 전화번호가 계좌로 잡힌다
 _KNOWN = "|".join(DASH.join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS)
-# 구분자 없는 계좌는 숫자열일 뿐이라 계좌·은행 라벨 바로 뒤에서만 받는다
 _LABEL = (
     rf"(?<=(?:계좌(?:번호)?|은행|뱅크|예금주{GAP}\S{{1,10}})[은는]?{GAP}{COLON_GAP})"
 )
-# "하나", "우리"처럼 일상어와 겹치는 은행 약칭은 컨텍스트 단어로 두면 "우리는 주문번호
-# 2024-123-456789"까지 점수가 오른다. 은행별 형식표와 맞는 번호 바로 앞에 올 때만 받는다
 _BANK_PREFIX = rf"(?<=(?:국민|신한|우리|하나|기업|산업|토스){GAP}{COLON_GAP})"
 
 
 def _starts_with_date(groups):
-    """YYYY-M(M)-D(D)로 시작하는지 본다 (19xx·20xx년, 1~12월, 1~31일)."""
     year, month, day = groups[:3]
     return (
         len(year) == 4
@@ -54,18 +43,6 @@ def _starts_with_date(groups):
 
 
 class KrBankAccountRecognizer(KoreanPatternRecognizer):
-    """
-    하이픈으로 표기한 한국 은행 계좌번호를 인식한다.
-
-    은행별 표기 형식(BANK_FORMATS)과 그룹 자릿수가 맞으면 0.4, 그 밖의 3~4그룹
-    숫자열은 형식표에 없는 실제 계좌일 수 있어 0.1로 남긴다. 계좌번호일 수 없는
-    모양은 validate_result가 걸러낸다.
-
-    계좌번호 체크섬은 은행마다 다르고 공개돼 있지 않아 검증할 수 없다. 그래서
-    형식이 맞아도 점수를 올리지 않고 주변에 "계좌", "은행" 같은 단어가 있을 때만
-    올린다. 같은 모양의 주문번호·문서번호는 계좌로 오탐될 수 있다.
-    """
-
     ENTITY = "KR_BANK_ACCOUNT"
 
     PATTERNS = [
@@ -121,19 +98,13 @@ class KrBankAccountRecognizer(KoreanPatternRecognizer):
     ]
 
     def validate_result(self, pattern_text: str) -> Optional[bool]:
-        """
-        계좌번호일 수 없는 모양을 걸러낸다.
-
-        통과해도 True가 아닌 None을 돌려준다. PatternRecognizer는 True를 받으면 점수를
-        1.0으로 올리는데, 체크섬 없는 형식 검증만으로는 그만큼 확신할 수 없다.
-        """
         groups = re.split(r"\D", pattern_text)
         shape = tuple(len(group) for group in groups)
         digits = sum(shape)
         if not 10 <= digits <= 14:
-            return False  # 날짜·카드번호
+            return False
         if (len(groups) >= 3 and _starts_with_date(groups)) or shape == (3, 2, 5):
-            return False  # 날짜(2024-01-15-…), 사업자등록번호
+            return False
         if pattern_text[0] == "0" and (shape in _PHONE_SHAPES or len(shape) == 1):
             return False
         if (
@@ -141,5 +112,5 @@ class KrBankAccountRecognizer(KoreanPatternRecognizer):
             and len(shape) == 3
             and digits <= 11
         ):
-            return False  # 010-123-45678처럼 자릿수를 잘못 끊은 휴대폰
+            return False
         return None

@@ -11,7 +11,6 @@ from presidio_ko import (
 
 @pytest.fixture(scope="session")
 def nlp_engine():
-    """한국어 spaCy NLP 엔진. ko_core_news_sm이 없으면 Presidio가 내려받는다."""
     return NlpEngineProvider(
         nlp_configuration={
             "nlp_engine_name": "spacy",
@@ -22,7 +21,6 @@ def nlp_engine():
 
 @pytest.fixture(scope="session")
 def analyzer(nlp_engine):
-    """README와 같은 구성의 한국어 AnalyzerEngine."""
     analyzer = AnalyzerEngine(
         nlp_engine=nlp_engine,
         supported_languages=["ko"],

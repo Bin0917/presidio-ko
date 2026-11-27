@@ -62,7 +62,6 @@ def test_partial_overlap_keeps_the_loser_remainder():
 
 
 def test_same_entity_overlaps_merge_into_one(korean_analyzer):
-    # 주소 결과가 "…을지로2"(0.6)와 "…을지로2가 50"(0.5) 둘로 나온다
     text = "서울 중구 을지로2가 50"
     pseudonymizer = Pseudonymizer()
     out = pseudonymize(korean_analyzer, pseudonymizer, text)

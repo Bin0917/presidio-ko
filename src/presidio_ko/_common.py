@@ -3,12 +3,8 @@ from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
 
-# 전각 숫자·＋·괄호를 ASCII로 바꾼다. 패턴의 0·1·+ 리터럴과 계좌 필터의 "0" 비교는
-# ASCII만 보므로, 그대로 두면 전각 전화번호가 계좌로 잡힌다.
-# 한 글자씩 바꾸므로 결과 위치가 원문과 같다
 FULL_WIDTH = str.maketrans("０１２３４５６７８９＋（）", "0123456789+()")
 
-# 가명 자리표시자에 쓰는 한국어 이름. 없는 엔티티는 엔티티 이름을 그대로 쓴다
 ENTITY_LABELS = {
     "PERSON": "이름",
     "KR_PHONE": "전화번호",
@@ -25,29 +21,15 @@ ENTITY_LABELS = {
     "EMAIL_ADDRESS": "이메일",
 }
 
-# 가변 길이 lookbehind 안의 공백은 길이를 제한한다. 무제한이면 긴 공백 입력에서
-# 매칭 시간이 입력 길이의 제곱 이상으로 늘어난다
 GAP = r"[	\p{Zs}]{0,3}"
 COLON_GAP = rf"(?:[:：]{GAP})?"
 
-# 유니코드 대시(\p{Pd}: 하이픈, en dash 등)와 OCR에 섞이는 빼기 기호(U+2212).
-# Presidio는 패턴을 regex 모듈로 컴파일하므로 \p{...}를 쓸 수 있다
 DASH = r"[\p{Pd}\u2212]"
-# 앞에 숫자나 "숫자+대시"가 붙거나 뒤에 대시·숫자가 이어지면 더 긴 번호의 일부다
 START = rf"(?<!\d)(?<!\d{DASH})"
 END = rf"(?!{DASH}?\d)"
 
 
 def drop_overlaps(results: List[RecognizerResult]) -> List[RecognizerResult]:
-    """
-    겹치는 결과를 겹치지 않게 정리해 위치 순으로 돌려준다.
-    입력이 덮던 글자는 정리 뒤에도 모두 덮인다.
-
-    - 같은 종류끼리 겹치면 합친다. 점수는 높은 쪽이다.
-    - 다른 종류가 다른 결과를 완전히 품으면 바깥 결과만 남긴다.
-    - 일부만 겹치면 점수(같으면 길이)가 높은 쪽을 남기고,
-      진 쪽은 겹치지 않는 조각으로 남긴다.
-    """
     merged: List[RecognizerResult] = []
     for r in sorted(results, key=lambda r: (r.entity_type, r.start)):
         m = merged[-1] if merged else None
@@ -55,7 +37,6 @@ def drop_overlaps(results: List[RecognizerResult]) -> List[RecognizerResult]:
             merged[-1] = _cut(m, m.start, max(m.end, r.end), max(m.score, r.score))
         else:
             merged.append(r)
-    # 진 쪽 조각은 지금 보는 위치보다 뒤에서 시작하므로 힙에 다시 넣어도 순서가 유지된다
     heap = [(r.start, -r.end, i, r) for i, r in enumerate(merged)]
     heapq.heapify(heap)
     count = len(heap)
@@ -82,8 +63,6 @@ def _cut(r: RecognizerResult, start: int, end: int, score: float) -> RecognizerR
 
 
 class KoreanPatternRecognizer(PatternRecognizer):
-    """전각 숫자를 ASCII로 바꿔 검사하는 한국어 PatternRecognizer 공통 부분."""
-
     COUNTRY_CODE = "kr"
     ENTITY: str
     PATTERNS: List[Pattern]

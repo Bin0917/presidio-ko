@@ -1,5 +1,3 @@
-"""Presidio용 한국어 개인정보 recognizer, 컨텍스트 강화기, 마스킹, 가명 치환."""
-
 from ._common import ENTITY_LABELS
 from .analyzer import create_korean_analyzer
 from .korean_context_enhancer import KoreanContextAwareEnhancer

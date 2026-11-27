@@ -8,15 +8,6 @@ _PLACEHOLDER = re.compile(r"\[[^\[\]]+\]")
 
 
 class Pseudonymizer:
-    """
-    개인정보를 "[이름1]" 같은 자리표시자로 바꿔 LLM에 보내고, 응답에서 되돌린다.
-
-    같은 원문은 같은 자리표시자를 받고, 번호는 여러 번 호출해도 이어진다.
-    원문에 이미 있는 "[이름1]" 같은 문자열과 겹치지 않게 번호를 건너뛴다.
-    한 대화에는 한 인스턴스를 쓴다. AnonymizerEngine은 이웃한 같은 종류 결과를
-    하나로 합쳐서("김민수 이영희") 되돌릴 수 없으므로 쓰지 않는다.
-    """
-
     def __init__(self) -> None:
         self.mapping: dict[str, str] = {}
         self._placeholders: dict[tuple[str, str], str] = {}

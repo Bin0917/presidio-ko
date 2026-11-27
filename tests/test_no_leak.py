@@ -1,5 +1,3 @@
-"""여러 종류의 개인정보를 무작위로 이어 붙여도 마스킹 밖으로 새지 않는지 본다."""
-
 import random
 import re
 
@@ -47,7 +45,6 @@ def address(rng):
     return value
 
 
-# (엔티티, 앞 라벨, 값 생성기)
 GENERATORS = [
     ("KR_PHONE", "연락처 ", phone),
     ("KR_RRN", "주민번호 ", rrn),
@@ -69,7 +66,6 @@ GENERATORS = [
 
 
 def windows(text):
-    """구분자 없이 이어진 글자·숫자 4개짜리 조각."""
     return {
         run[i : i + 4]
         for run in re.findall(r"[0-9A-Za-z가-힣*]+", text)
@@ -85,12 +81,12 @@ def generate(rng):
         if parts:
             sep = rng.choice(SEPARATORS)
             if entity == "EMAIL_ADDRESS" and sep == "/":
-                sep = " / "  # 글자 바로 뒤 "/"에 붙은 이메일은 README 한계
+                sep = " / "
             parts.append(sep)
             pos += len(sep)
         value = make(rng)
         if rng.random() < 0.5 and entity != "KR_BANK_ACCOUNT":
-            label = ""  # 라벨 없이 바로 이웃하게
+            label = ""
         parts.append(label + value)
         values.append((entity, pos + len(label), value))
         pos += len(label) + len(value)

@@ -9,7 +9,6 @@ from presidio_analyzer.predefined_recognizers.country_specific.korea import (
 
 from presidio_ko import KoreanContextAwareEnhancer
 
-# Presidio 이슈 #2212에서 KrRrnRecognizer에 추가하자고 제안한 단어
 PROPOSED_RRN_CONTEXT = KrRrnRecognizer.CONTEXT + [
     "주민등록번호",
     "주민번호",
@@ -34,7 +33,6 @@ def score(analyzer, text, entity):
     return result.score
 
 
-# 업스트림 recognizer도 lemma 분절("주민등+록번+호는")로 놓치던 컨텍스트가 붙어야 한다
 @pytest.mark.parametrize(
     "text, bare, entity",
     [
@@ -65,14 +63,12 @@ def test_uses_configured_similarity_factor(nlp_engine):
     enhancer = KoreanContextAwareEnhancer(context_similarity_factor=0.1)
     analyzer = build_analyzer(nlp_engine, enhancer)
     text = "외국인등록번호는 900101-5234567"
-    # 기본 점수 0.5 + 설정한 0.1 (하드코딩된 0.35가 아님)
     assert score(analyzer, text, "KR_FRN") == pytest.approx(0.6)
 
 
 def test_keeps_lemma_matching_for_non_korean_text():
-    # 다국어 엔진에서 한국어가 아닌 문서는 기본 강화기처럼 lemma로 비교해야 한다
     doc = spacy.blank("en")("credit cards 4111111111111111")
-    lemmas = ["credit", "card", "4111111111111111"]  # "cards"의 lemma는 "card"
+    lemmas = ["credit", "card", "4111111111111111"]
     artifacts = NlpArtifacts(
         entities=[],
         tokens=doc,

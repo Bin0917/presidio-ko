@@ -102,19 +102,18 @@ def test_matches_road_and_lot_addresses(text, address, score):
 @pytest.mark.parametrize(
     "text",
     [
-        "서울 강남구에서 만나요",  # 번호 없음
+        "서울 강남구에서 만나요",
         "서울 12",
-        "우동 1408-3 센텀파크",  # 시도·시군구 없는 지번
+        "우동 1408-3 센텀파크",
         "2024년 3월 12일 회의",
-        "테헤란로 152",  # 시군구 없음
+        "테헤란로 152",
         "다시 처음으로 1번 문제를 풀어보세요.",
         "이번 연구 결과로 3명이 합격했다.",
         "요구 사항으로 5개를 정리했다.",
         "우리 가구 배송으로 2일 걸려요",
         "그는 다시 집으로 10시에 돌아왔다.",
         "연구원으로 5년 근무했다.",
-        "성남시 분당구 판교역로 235",  # 시도도 주소 라벨도 없음
-        # 시군구 없이 시도 바로 뒤 "~면"은 읍·면이 아니다(세종시만 예외)
+        "성남시 분당구 판교역로 235",
         "서울 방면 도로 3개 차선이 통제됩니다.",
         "서울 방면 경부로 5번 출구로 나가세요.",
         "서울 이면 도로 12곳이 공사 중입니다.",
@@ -137,7 +136,6 @@ def test_ignores_non_addresses(text):
     ],
 )
 def test_number_after_a_comma_is_not_read_as_a_unit(text):
-    # 쉼표 뒤 "101-1203" 같은 동-호는 받지만, 더 긴 번호의 앞부분은 받지 않는다
     assert [a for a, _ in found(text)] == [text[: text.index(",")]]
 
 
@@ -161,7 +159,6 @@ def test_number_after_a_comma_is_not_read_as_a_unit(text):
     ],
 )
 def test_building_name_stops_at_sentence_words(text, address):
-    # 조사·어미로 끝나는 말("에서", "받는")은 건물명이 아니고 "3호선"은 호수가 아니다
     assert [a for a, _ in found(text)] == [address]
 
 

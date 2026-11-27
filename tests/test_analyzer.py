@@ -29,7 +29,6 @@ def test_detects_card_passport_and_license(korean_analyzer):
     ["연락처 010-1234-5678 010-2345-6789", "연락처 010 1234 5678 010 2345 6789"],
 )
 def test_two_phone_numbers_are_not_a_card_number(korean_analyzer, text):
-    # 가운데 "1234 5678 010 2345"는 우연히 Luhn을 통과하는 16자리다
     assert found(korean_analyzer, text) == {
         ("KR_PHONE", text[4:17]),
         ("KR_PHONE", text[18:]),

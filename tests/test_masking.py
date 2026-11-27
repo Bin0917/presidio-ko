@@ -82,7 +82,6 @@ def test_user_can_override_a_rule():
 
 
 def test_korean_mask_masks_neighbours_separately(korean_analyzer):
-    # AnonymizerEngine은 공백으로 이웃한 같은 종류를 하나로 합쳐 뒤 4자리만 가린다
     text = "연락처 010-1234-5678 010-2345-6789 이메일 abcd@x.com efgh@y.com"
     results = korean_analyzer.analyze(text=text, language="ko")
     assert korean_mask(text, results) == (
@@ -91,7 +90,6 @@ def test_korean_mask_masks_neighbours_separately(korean_analyzer):
 
 
 def test_korean_mask_hides_what_either_nested_rule_hides():
-    # 바깥 계좌 규칙은 끝 2자리를, 안쪽 전화 규칙은 끝 4자리를 가린다
     text = "번호 110-123-456789"
     results = [
         RecognizerResult("KR_BANK_ACCOUNT", 3, 17, 0.75),
@@ -101,7 +99,6 @@ def test_korean_mask_hides_what_either_nested_rule_hides():
 
 
 def test_korean_mask_merges_overlapping_results_of_one_entity(korean_analyzer):
-    # 주소 결과가 "…을지로2"(0.6)와 "…을지로2가 50"(0.5) 둘로 나온다
     text = "서울 중구 을지로2가 50"
     results = korean_analyzer.analyze(text=text, language="ko")
     assert korean_mask(text, results) == "서울 중구 을지로2가 **"
@@ -116,7 +113,6 @@ def test_korean_mask_masks_the_remainder_of_a_partial_loser():
 
 
 def test_korean_mask_masks_a_name_inside_an_address():
-    # 주소 규칙은 숫자만 가리므로 주소에 묻힌 이름은 이름 규칙으로 가린다
     text = "서울 강남구 테헤란로 152 받는 분 김민수 101호"
     start = text.index("김민수")
     results = [
@@ -144,7 +140,6 @@ def test_korean_mask_keeps_an_empty_operator_dict():
 
 
 def test_operators_are_not_exported_at_the_top_level():
-    # 기본 AnonymizerEngine.anonymize에 넘기면 공백으로 이웃한 같은 종류가 합쳐져 샌다
     assert "korean_operators" not in presidio_ko.__all__
     assert not hasattr(presidio_ko, "korean_operators")
 
