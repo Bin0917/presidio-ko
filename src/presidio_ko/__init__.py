@@ -7,6 +7,7 @@ from .kr_bank_account_recognizer import KrBankAccountRecognizer
 from .kr_person_recognizer import KrPersonRecognizer
 from .kr_phone_recognizer import KrPhoneRecognizer
 from .masking import korean_operators
+from .pseudonym import Pseudonymizer
 
 KOREAN_RECOGNIZERS = [
     KrPhoneRecognizer(),
@@ -19,6 +20,7 @@ __all__ = [
     "KOREAN_RECOGNIZERS",
     "KoreanContextAwareEnhancer",
     "KrAddressRecognizer",
+    "Pseudonymizer",
     "KrBankAccountRecognizer",
     "KrPersonRecognizer",
     "KrPhoneRecognizer",

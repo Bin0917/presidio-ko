@@ -7,6 +7,23 @@ from presidio_analyzer import Pattern, PatternRecognizer
 # 한 글자씩 바꾸므로 결과 위치가 원문과 같다
 FULL_WIDTH = str.maketrans("０１２３４５６７８９＋（）", "0123456789+()")
 
+# 가명 자리표시자에 쓰는 한국어 이름. 없는 엔티티는 엔티티 이름을 그대로 쓴다
+ENTITY_LABELS = {
+    "PERSON": "이름",
+    "KR_PHONE": "전화번호",
+    "KR_BANK_ACCOUNT": "계좌번호",
+    "KR_ADDRESS": "주소",
+    "KR_RRN": "주민등록번호",
+    "KR_FRN": "외국인등록번호",
+    "KR_BRN": "사업자등록번호",
+    "KR_PASSPORT": "여권번호",
+    "KR_DRIVER_LICENSE": "운전면허번호",
+    "KR_VEHICLE_PLATE": "차량번호",
+    "KR_HEALTH_INSURANCE": "건강보험증번호",
+    "CREDIT_CARD": "카드번호",
+    "EMAIL_ADDRESS": "이메일",
+}
+
 # 유니코드 대시(\p{Pd}: 하이픈, en dash 등)와 OCR에 섞이는 빼기 기호(U+2212).
 # Presidio는 패턴을 regex 모듈로 컴파일하므로 \p{...}를 쓸 수 있다
 DASH = r"[\p{Pd}\u2212]"
