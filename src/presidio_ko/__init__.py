@@ -1,5 +1,6 @@
 """Presidio용 한국어 개인정보 recognizer, 컨텍스트 강화기, 마스킹, 가명 치환."""
 
+from ._common import ENTITY_LABELS
 from .analyzer import create_korean_analyzer
 from .korean_context_enhancer import KoreanContextAwareEnhancer
 from .kr_address_recognizer import KrAddressRecognizer
@@ -21,15 +22,16 @@ KOREAN_RECOGNIZERS = [
 ]
 
 __all__ = [
+    "ENTITY_LABELS",
     "KOREAN_RECOGNIZERS",
     "KoreanContextAwareEnhancer",
     "KrAddressRecognizer",
-    "Pseudonymizer",
     "KrBankAccountRecognizer",
     "KrHealthInsuranceRecognizer",
     "KrPersonRecognizer",
     "KrPhoneRecognizer",
     "KrVehiclePlateRecognizer",
+    "Pseudonymizer",
     "create_korean_analyzer",
     "korean_operators",
 ]

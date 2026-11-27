@@ -1,4 +1,5 @@
-import regex
+import re
+
 from presidio_analyzer import EntityRecognizer, RecognizerResult
 
 # 한국어 spaCy 모델은 "김민수님의"처럼 조사까지 붙여 인물(PS)로 잡는다.
@@ -33,14 +34,13 @@ _SUFFIXES = sorted(
 )
 # 성씨로 시작하는 양식 라벨(임대인, 이체일시)이 이름으로 잡히지 않게 한다
 _FIELD_WORDS = set(
-    """주문번호 송장번호 이체일시 임대인 임차인 사원명 서명 성명 대표 고객 이름
-    성함 이체 이메일 주소 주민 송금 계좌 담당자 수신인 대표자 환자명 보호자
-    근로자 사용자 상담사 수령인 문의 이용자 입금 출금 거래 금액 일시 번호
-    사원 환자 보호 근로 임대 임차 주문 송장 고객명 연락처 연락 전화번호 휴대폰
-    핸드폰 신한 국민 우리 하나 기업 신협 우체국 신용 조회 김밥 김치""".split()
+    """고객 고객명 국민 금액 기업 김밥 김치 문의 사용자 사원
+    사원명 서명 성명 성함 송금 송장 신용 신한 신협 연락 연락처
+    우리 우체국 이름 이메일 이용자 이체 임대 임대인 임차 임차인
+    조회 주문 주민 주소 하나""".split()
 )
 _COMPOUND_SURNAMES = ("남궁", "황보", "제갈", "선우", "서문", "독고", "사공")
-_LABELED = regex.compile(
+_LABELED = re.compile(
     r"(?:성명|이름|예금주|고객명|대표자|대표이사|담당자|수신인|받는\s?분|보내는\s?분"
     r"|임대인|임차인|근로자|환자명|보호자)[은는]?"
     r"(?:[ \t]{1,3}(?:성명|이름|성함))?[ \t]{0,3}(?:[:：][ \t]{0,3})?([가-힣]+)"
@@ -61,7 +61,7 @@ def _strip_suffix(word: str) -> str:
 
 def _is_name(word: str) -> bool:
     return (
-        regex.fullmatch(r"[가-힣]{2,4}", word) is not None
+        re.fullmatch(r"[가-힣]{2,4}", word) is not None
         and word[0] in _SURNAMES
         and word not in _FIELD_WORDS
         # 네 글자 이름은 복성뿐이다. "김치찌개", "김밥천국"을 거른다
