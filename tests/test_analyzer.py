@@ -1,5 +1,7 @@
 import logging
 
+import pytest
+
 from presidio_ko import create_korean_analyzer
 
 
@@ -42,3 +44,14 @@ def test_creating_the_analyzer_leaves_the_logger_level_alone():
     create_korean_analyzer()
     assert logger.isEnabledFor(logging.WARNING)
     assert logger.getEffectiveLevel() == before
+
+
+@pytest.mark.parametrize("label", ["주민번호", "주민등록번호", "신분증", "본인인증"])
+def test_korean_rrn_labels_raise_the_score(korean_analyzer, label):
+    text = f"{label} 900101-1234567"
+    (result,) = [
+        r
+        for r in korean_analyzer.analyze(text=text, language="ko")
+        if r.entity_type == "KR_RRN"
+    ]
+    assert result.score >= 0.85

@@ -16,6 +16,12 @@ from .kr_driver_license_recognizer import KrDriverLicenseRecognizer
 # 업스트림 PhoneRecognizer는 KR_PHONE과 같은 번호를 PHONE_NUMBER로 한 번 더 보고하고,
 # SpacyRecognizer는 PERSON을 KrPersonRecognizer와 따로 낸다
 _REPLACED = ["PhoneRecognizer", "SpacyRecognizer"]
+_RRN_CONTEXT = KrRrnRecognizer.CONTEXT + [
+    "주민등록번호",
+    "주민번호",
+    "신분증",
+    "본인인증",
+]
 
 
 def create_korean_analyzer(
@@ -49,7 +55,7 @@ def create_korean_analyzer(
     for name in _REPLACED:
         registry.remove_recognizer(name, "ko")
     upstream = [
-        KrRrnRecognizer(),
+        KrRrnRecognizer(context=_RRN_CONTEXT),
         KrFrnRecognizer(),
         KrBrnRecognizer(),
         KrPassportRecognizer(supported_language="ko"),
