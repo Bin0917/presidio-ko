@@ -29,6 +29,8 @@ HOSTILE = {
     "comma_unit_dashes": "서울 강남구 테헤란로 1, 1-1" + "-1" * (N // 2),
     "comma_unit_digits": "서울 강남구 테헤란로 1, 1-" + "1" * N,
     "building_words": "서울 강남구 테헤란로 1" + " 가1" * (N // 3) + "x",
+    "building_long_word": "서울 강남구 테헤란로 1 " + "가" * N + "서",
+    "building_particles": "서울 강남구 테헤란로 1" + " 가서" * (N // 3) + " 1호",
     "building_digits": "서울 강남구 테헤란로 1 " + "1 " * (N // 2) + "x",
     "digits": "1" * N,
     "digits_dash": "1-" * (N // 2),

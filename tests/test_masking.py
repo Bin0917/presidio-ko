@@ -124,6 +124,12 @@ def test_korean_mask_masks_a_name_inside_an_address():
     assert korean_mask(text, results) == "서울 강남구 테헤란로 *** 받는 분 김*수 ***호"
 
 
+def test_name_after_an_address_is_masked_as_a_name(korean_analyzer):
+    text = "서울 강남구 테헤란로 152 받는 분 김민수 101호"
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == "서울 강남구 테헤란로 *** 받는 분 김*수 101호"
+
+
 def test_korean_mask_takes_custom_operators():
     results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
     operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}

@@ -142,6 +142,30 @@ def test_number_after_a_comma_is_not_read_as_a_unit(text):
     assert [a for a, _ in found(text)] == [text[: text.index(",")]]
 
 
+@pytest.mark.parametrize(
+    ("text", "address"),
+    [
+        (
+            "서울 강남구 테헤란로 152 에서 만나서 3호 차량으로 이동하자.",
+            "서울 강남구 테헤란로 152",
+        ),
+        (
+            "서울 강남구 테헤란로 152 앞에서 같이 3호 열차를 타자.",
+            "서울 강남구 테헤란로 152",
+        ),
+        (
+            "경기도 성남시 분당구 판교역로 235 건물 앞에서 만나자 3호 차량",
+            "경기도 성남시 분당구 판교역로 235",
+        ),
+        ("서울 강남구 테헤란로 152 받는 분 김민수 101호", "서울 강남구 테헤란로 152"),
+        ("서울 강남구 역삼동 123-4 건물 3호선 역", "서울 강남구 역삼동 123-4"),
+    ],
+)
+def test_building_name_stops_at_sentence_words(text, address):
+    # 조사·어미로 끝나는 말("에서", "받는")은 건물명이 아니고 "3호선"은 호수가 아니다
+    assert [a for a, _ in found(text)] == [address]
+
+
 def test_address_label_allows_a_missing_province():
     text = "주소: 분당구 판교역로 235"
     assert found(text) == [("분당구 판교역로 235", 0.6)]
