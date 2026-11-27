@@ -3,7 +3,9 @@ from presidio_analyzer import RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-from presidio_ko import korean_mask, korean_operators
+import presidio_ko
+from presidio_ko import korean_mask
+from presidio_ko.masking import korean_operators
 
 
 def mask(entity, value, operators=None):
@@ -139,3 +141,9 @@ def test_korean_mask_takes_custom_operators():
 def test_korean_mask_keeps_an_empty_operator_dict():
     results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
     assert korean_mask("010-1234-5678", results, {}) == "<KR_PHONE>"
+
+
+def test_operators_are_not_exported_at_the_top_level():
+    # 기본 AnonymizerEngine.anonymize에 넘기면 공백으로 이웃한 같은 종류가 합쳐져 샌다
+    assert "korean_operators" not in presidio_ko.__all__
+    assert not hasattr(presidio_ko, "korean_operators")

@@ -73,10 +73,13 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 
 `korean_mask(text, results)`는 분석 결과를 아래 규칙으로 가린 문자열을 돌려줍니다.
 개인정보보호위원회 권고와 ISMS-P 관행대로 구분자(대시·공백·점)는 두고 글자·숫자만 `*`로 바꿉니다.
-규칙은 `korean_operators()`에 있고, `AnonymizerEngine.anonymize(operators=...)`에 직접 넘길 수도
-있습니다. 그때는 `merge_entities_with_spaces=False`를 꼭 넘기세요. 기본값은 공백으로 이웃한 같은
-종류를 하나로 합쳐서 `010-1234-5678 010-2345-6789`의 뒤 4자리만 가리고 앞 번호를 그대로 둡니다.
-`korean_mask`는 이 설정을 넣고, 일부만 겹치는 결과는 점수가 높은 쪽만 남깁니다.
+결과가 겹치면 같은 종류는 하나로 합치고, 한 결과가 다른 종류를 품으면 바깥 결과를 남기되 안쪽
+결과의 규칙이 가리는 글자도 가립니다. 일부만 겹치면 점수가 높은 쪽을 남기고 진 쪽의 나머지
+조각도 진 쪽 규칙으로 가립니다. 탐지된 글자는 규칙이 표시하는 부분 말고는 드러나지 않습니다.
+
+`AnonymizerEngine.anonymize`에 규칙을 직접 넘기지 말고 `korean_mask`를 쓰세요. 엔진은 기본값으로
+공백을 사이에 둔 같은 종류를 하나로 합쳐서 `010-1234-5678 010-2345-6789`의 뒤 4자리만 가리고 앞
+번호를 그대로 두며, 겹치는 결과도 정리하지 않습니다.
 
 | 엔티티 | 규칙 | 예 |
 |---|---|---|
@@ -96,6 +99,8 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 
 ```python
 from presidio_anonymizer.entities import OperatorConfig
+
+from presidio_ko.masking import korean_operators
 
 operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
 masked = korean_mask(text, results, operators)

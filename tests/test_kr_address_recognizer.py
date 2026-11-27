@@ -1,7 +1,6 @@
 import pytest
-from presidio_anonymizer import AnonymizerEngine
 
-from presidio_ko import KrAddressRecognizer, korean_operators
+from presidio_ko import KrAddressRecognizer, korean_mask
 
 recognizer = KrAddressRecognizer()
 
@@ -174,7 +173,7 @@ def test_address_label_allows_a_missing_province():
 def test_analyzed_address_is_masked_after_the_building_number(korean_analyzer):
     text = "배송지는 서울 영등포구 영등포로3길 12, 101동 1001호 입니다"
     results = korean_analyzer.analyze(text=text, language="ko")
-    masked = AnonymizerEngine().anonymize(text, results, korean_operators()).text
+    masked = korean_mask(text, results)
     assert masked == "배송지는 서울 영등포구 영등포로3길 **, ***동 ****호 입니다"
 
 
