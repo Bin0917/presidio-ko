@@ -120,6 +120,8 @@ def test_matches_road_and_lot_addresses(text, address, score):
         "부산 전면 도로 3개가 막혔다.",
         "경기 측면 통로 2개를 확보했다.",
         "대구 평면 도로 5개 구간이 있다.",
+        "서울 중구 을지로3가역에서 만나요",
+        "서울 종로구 종로3가역 2번 출구",
     ],
 )
 def test_ignores_non_addresses(text):
@@ -176,3 +178,9 @@ def test_analyzed_address_is_masked_after_the_building_number(korean_analyzer):
 
 def test_street_name_without_a_building_number_is_not_cut_in_half():
     assert found("제주 서귀포시 중문관광로 72번길 방향으로 우회하세요.") == []
+
+
+def test_lot_address_in_a_numbered_ga_is_still_found():
+    assert [a for a, _ in found("서울 중구 을지로3가 5-1")] == [
+        "서울 중구 을지로3가 5-1"
+    ]
