@@ -12,3 +12,20 @@ def test_readme_example_prints_documented_output(capsys):
     exec(code, {})
 
     assert capsys.readouterr().out == documented
+
+
+def test_text_files_have_no_control_characters():
+    root = README.parent
+    paths = [
+        README,
+        root / "AGENTS.md",
+        *root.glob("src/**/*.py"),
+        *root.glob("tests/**/*.py"),
+    ]
+    found = [
+        (path.name, line)
+        for path in paths
+        for line, text in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", text)
+    ]
+    assert found == []
