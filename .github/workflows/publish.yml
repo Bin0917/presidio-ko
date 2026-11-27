@@ -1,8 +1,8 @@
 name: publish
 
 # main push: 배포 파일 빌드와 메타데이터 검사만.
-# v* 태그 push: 테스트를 다시 돌린 뒤 같은 빌드를 PyPI에 배포(Trusted Publishing, 토큰 없음)하고
-# GitHub Release에 배포 파일을 붙인다
+# v* 태그 push: 테스트를 다시 돌린 뒤 GitHub Release에 배포 파일을 붙인다.
+# PyPI 배포(Trusted Publishing, 토큰 없음)는 저장소 변수 PYPI_PUBLISH=true일 때만 한다
 on:
   push:
     branches: [main]
@@ -36,7 +36,7 @@ jobs:
     uses: ./.github/workflows/test.yml
 
   pypi:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && vars.PYPI_PUBLISH == 'true'
     needs: [build, test]
     runs-on: ubuntu-latest
     environment: pypi
@@ -50,7 +50,8 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
 
   github-release:
-    needs: pypi
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, test]
     runs-on: ubuntu-latest
     permissions:
       contents: write
