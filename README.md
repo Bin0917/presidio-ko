@@ -60,7 +60,7 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 | 엔티티 | 설명 | 출처 | 비고 |
 |---|---|---|---|
 | `PERSON` | 이름 | **이 패키지** `KrPersonRecognizer` | 성명·예금주 같은 라벨 뒤 0.85, spaCy 인물 0.6. 성씨 표와 양식 라벨 차단어로 거름 |
-| `KR_ADDRESS` | 주소 | **이 패키지** `KrAddressRecognizer` | 시도(또는 `주소`·`배송지` 같은 라벨) + 시군구 + 도로명·건물번호나 지번, 뒤따르는 동·호. 건물명은 동·호가 이어질 때만 포함 |
+| `KR_ADDRESS` | 주소 | **이 패키지** `KrAddressRecognizer` | 시도(또는 `주소`·`배송지` 같은 라벨) + 시군구·읍면 + 도로명·건물번호나 지번, 뒤따르는 동·호. 건물명은 동·호가 이어질 때만 포함 |
 | `KR_PHONE` | 휴대폰·유선전화 | **이 패키지** `KrPhoneRecognizer` | `+82` 국제 형식 포함 |
 | `KR_BANK_ACCOUNT` | 계좌번호 | **이 패키지** `KrBankAccountRecognizer` | 은행명·라벨 컨텍스트, 구분자 없는 번호는 라벨 뒤만 |
 | `KR_VEHICLE_PLATE` | 차량번호 | **이 패키지** `KrVehiclePlateRecognizer` | `12가 3456`, `서울12가3456` |
