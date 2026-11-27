@@ -3,7 +3,7 @@ from presidio_analyzer import Pattern
 from ._common import DASH, END, START, KoreanPatternRecognizer
 
 _GAP = r"[\t\p{Zs}]"
-_SEP = rf"(?:{_GAP}*(?:{DASH}|\.){_GAP}*|{_GAP}+)"
+_SEP = rf"(?:{_GAP}*(?:{DASH}|[.·ㆍ・]){_GAP}*|{_GAP}+)"
 _TRUNK = rf"(?:0|(?:\+82|\(\+82\)){_SEP}?(?:\(0\){_GAP}*|0)?)"
 _MOBILE = r"1[016789]"
 _AREA = r"(?:2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|50[2-8])"

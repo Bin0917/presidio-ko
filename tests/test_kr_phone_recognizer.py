@@ -147,3 +147,22 @@ def test_matches_full_width_digits(analyzer, text, expected):
     assert [(r.entity_type, text[r.start : r.end]) for r in results] == [
         ("KR_PHONE", expected)
     ]
+
+
+@pytest.mark.parametrize(
+    "number", ["010·1234·5678", "010ㆍ1234ㆍ5678", "02·123·4567", "010 · 1234 · 5678"]
+)
+def test_middle_dot_separates_groups(number):
+    assert found(f"연락처 {number}로") == [number]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("1·2·3차 회의", []),
+        ("2024·11·28", []),
+        ("010-1234-5678·010-2345-6789", ["010-1234-5678", "010-2345-6789"]),
+    ],
+)
+def test_middle_dot_between_items_does_not_join_them(text, expected):
+    assert found(text) == expected
