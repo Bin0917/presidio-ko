@@ -9,6 +9,7 @@ from presidio_ko import (
     KrPersonRecognizer,
     KrPhoneRecognizer,
     KrVehiclePlateRecognizer,
+    create_korean_analyzer,
 )
 
 N = 50_000
@@ -47,6 +48,11 @@ RECOGNIZERS = [
     KrPersonRecognizer(),
     KrPhoneRecognizer(),
     KrVehiclePlateRecognizer(),
+    *[
+        r
+        for r in create_korean_analyzer().registry.recognizers
+        if r.name == "CreditCardRecognizer"
+    ],
 ]
 
 

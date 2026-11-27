@@ -24,6 +24,15 @@ def test_detects_card_passport_and_license(korean_analyzer):
     }
 
 
+def test_two_phone_numbers_are_not_a_card_number(korean_analyzer):
+    # "1234-5678 010-2345"는 우연히 Luhn을 통과하는 16자리다
+    text = "연락처 010-1234-5678 010-2345-6789"
+    assert found(korean_analyzer, text) == {
+        ("KR_PHONE", "010-1234-5678"),
+        ("KR_PHONE", "010-2345-6789"),
+    }
+
+
 def test_detects_rrn_and_bank_account(korean_analyzer):
     text = "주민등록번호는 900101-1234567 계좌는 110-123-456789"
     assert found(korean_analyzer, text) >= {

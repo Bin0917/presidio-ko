@@ -1,6 +1,6 @@
 import logging
 
-from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
+from presidio_analyzer import AnalyzerEngine, Pattern, RecognizerRegistry
 from presidio_analyzer.nlp_engine import NlpEngine, NlpEngineProvider
 from presidio_analyzer.predefined_recognizers import CreditCardRecognizer
 from presidio_analyzer.predefined_recognizers.country_specific.korea import (
@@ -10,6 +10,7 @@ from presidio_analyzer.predefined_recognizers.country_specific.korea import (
     KrRrnRecognizer,
 )
 
+from ._common import END, START
 from .korean_context_enhancer import KoreanContextAwareEnhancer
 from .kr_driver_license_recognizer import KrDriverLicenseRecognizer
 
@@ -21,6 +22,12 @@ _RRN_CONTEXT = KrRrnRecognizer.CONTEXT + [
     "주민번호",
     "신분증",
     "본인인증",
+]
+# 업스트림 카드 패턴은 로 시작해서 "010-1234-5678 010-2345-6789"의 가운데
+# "1234-5678 010-2345"처럼 더 긴 번호 안에서 Luhn을 통과하는 16자리도 잡는다
+_CARD_PATTERNS = [
+    Pattern(p.name, START + p.regex + END, p.score)
+    for p in CreditCardRecognizer.PATTERNS
 ]
 
 
@@ -60,7 +67,7 @@ def create_korean_analyzer(
         KrBrnRecognizer(),
         KrPassportRecognizer(supported_language="ko"),
         KrDriverLicenseRecognizer(),
-        CreditCardRecognizer(supported_language="ko"),
+        CreditCardRecognizer(patterns=_CARD_PATTERNS, supported_language="ko"),
     ]
     for recognizer in upstream + KOREAN_RECOGNIZERS:
         registry.add_recognizer(recognizer)
