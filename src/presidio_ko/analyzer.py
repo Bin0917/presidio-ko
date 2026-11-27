@@ -13,6 +13,7 @@ from presidio_analyzer.predefined_recognizers.country_specific.korea import (
 from ._common import END, START
 from .korean_context_enhancer import KoreanContextAwareEnhancer
 from .kr_driver_license_recognizer import KrDriverLicenseRecognizer
+from .kr_phone_recognizer import KrPhoneRecognizer
 
 # 업스트림 PhoneRecognizer는 KR_PHONE과 같은 번호를 PHONE_NUMBER로 한 번 더 보고하고,
 # SpacyRecognizer는 PERSON을 KrPersonRecognizer와 따로 낸다
@@ -29,6 +30,28 @@ _CARD_PATTERNS = [
     Pattern(p.name, START + p.regex + END, p.score)
     for p in CreditCardRecognizer.PATTERNS
 ]
+
+
+class _CardRecognizer(CreditCardRecognizer):
+    """
+    전화번호를 가로지르는 카드 후보를 버린다. "010 1234 5678 010 2345 6789"의
+    "1234 5678 010 2345"는 공백 구분이라 경계 검사를 통과한다. 카드 경계에서 공백
+    뒤 숫자를 막으면 공백으로 이어 쓴 카드 두 장도 놓친다.
+    """
+
+    _PHONE = KrPhoneRecognizer()
+
+    def analyze(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        phones = self._PHONE.analyze(text, ["KR_PHONE"])
+        return [
+            card
+            for card in super().analyze(text, entities, nlp_artifacts, regex_flags)
+            if not any(
+                p.start < card.start < p.end < card.end
+                or card.start < p.start < card.end < p.end
+                for p in phones
+            )
+        ]
 
 
 def create_korean_analyzer(
@@ -67,7 +90,11 @@ def create_korean_analyzer(
         KrBrnRecognizer(),
         KrPassportRecognizer(supported_language="ko"),
         KrDriverLicenseRecognizer(),
-        CreditCardRecognizer(patterns=_CARD_PATTERNS, supported_language="ko"),
+        _CardRecognizer(
+            patterns=_CARD_PATTERNS,
+            supported_language="ko",
+            name="CreditCardRecognizer",
+        ),
     ]
     for recognizer in upstream + KOREAN_RECOGNIZERS:
         registry.add_recognizer(recognizer)

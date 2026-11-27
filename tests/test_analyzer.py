@@ -24,13 +24,28 @@ def test_detects_card_passport_and_license(korean_analyzer):
     }
 
 
-def test_two_phone_numbers_are_not_a_card_number(korean_analyzer):
-    # "1234-5678 010-2345"는 우연히 Luhn을 통과하는 16자리다
-    text = "연락처 010-1234-5678 010-2345-6789"
+@pytest.mark.parametrize(
+    "text",
+    ["연락처 010-1234-5678 010-2345-6789", "연락처 010 1234 5678 010 2345 6789"],
+)
+def test_two_phone_numbers_are_not_a_card_number(korean_analyzer, text):
+    # 가운데 "1234 5678 010 2345"는 우연히 Luhn을 통과하는 16자리다
     assert found(korean_analyzer, text) == {
-        ("KR_PHONE", "010-1234-5678"),
-        ("KR_PHONE", "010-2345-6789"),
+        ("KR_PHONE", text[4:17]),
+        ("KR_PHONE", text[18:]),
     }
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("4111111111111111", "5500000000000004"),
+        ("4111 1111 1111 1111", "5500 0000 0000 0004"),
+    ],
+)
+def test_cards_next_to_each_other_are_both_found(korean_analyzer, first, second):
+    cards = found(korean_analyzer, f"카드 {first} {second}")
+    assert {v for e, v in cards if e == "CREDIT_CARD"} == {first, second}
 
 
 def test_detects_rrn_and_bank_account(korean_analyzer):
