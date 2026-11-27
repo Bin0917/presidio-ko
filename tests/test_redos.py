@@ -20,6 +20,8 @@ HOSTILE = {
     "sigungu_nospace": "가구" * (N // 2),
     "eupmyeon": "가면 " * (N // 3),
     "sido_eupmyeon": "서울 " + "가읍" * (N // 2),
+    "sejong_eupmyeon": "세종 " + "가읍" * (N // 2),
+    "sejong_eupmyeon_space": "세종시 " + "가면 " * (N // 3),
     "road_without_number": "서울 강남구 " + "가로" * (N // 2),
     "ro_space": "로 " * (N // 2),
     "detail": "서울 강남구 테헤란로 1" + ", 1동" * (N // 4) + "x",
