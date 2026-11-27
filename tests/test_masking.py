@@ -134,3 +134,8 @@ def test_korean_mask_takes_custom_operators():
     results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
     operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
     assert korean_mask("010-1234-5678", results, operators) == "<KR_PHONE>"
+
+
+def test_korean_mask_keeps_an_empty_operator_dict():
+    results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
+    assert korean_mask("010-1234-5678", results, {}) == "<KR_PHONE>"

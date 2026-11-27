@@ -123,7 +123,7 @@ def korean_mask(
     그대로 보이므로 합치지 않는다. 겹치는 결과는 엔진이 글자를 겹쳐 쓰므로
     drop_overlaps로 먼저 정리한다.
     """
-    operators = operators or korean_operators()
+    operators = korean_operators() if operators is None else operators
     kept = drop_overlaps(results)
     result = _ENGINE.anonymize(text, kept, operators, merge_entities_with_spaces=False)
     return _mask_contained(text, results, kept, operators, result)
