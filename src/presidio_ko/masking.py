@@ -3,6 +3,7 @@
 구분자는 그대로 두고 글자·숫자만 `*`로 바꾼다. 각 규칙은 str -> str 순수 함수다.
 """
 
+import bisect
 import re
 from collections.abc import Callable
 
@@ -122,9 +123,36 @@ def korean_mask(
     그대로 보이므로 합치지 않는다. 겹치는 결과는 엔진이 글자를 겹쳐 쓰므로
     drop_overlaps로 먼저 정리한다.
     """
-    return _ENGINE.anonymize(
-        text,
-        drop_overlaps(results),
-        operators or korean_operators(),
-        merge_entities_with_spaces=False,
-    ).text
+    operators = operators or korean_operators()
+    kept = drop_overlaps(results)
+    result = _ENGINE.anonymize(text, kept, operators, merge_entities_with_spaces=False)
+    return _mask_contained(text, results, kept, operators, result)
+
+
+def _mask_contained(text, results, kept, operators, result) -> str:
+    """
+    다른 종류 결과 안에 묻혀 빠진 결과가 가리는 글자를 출력에서도 가린다.
+
+    주소 규칙은 숫자만 가리므로 주소 범위에 들어간 이름이 그대로 보인다.
+    바깥과 안쪽 규칙이 모두 길이를 지키는 custom 규칙일 때 두 규칙의 가림을 합친다.
+    """
+    starts = [k.start for k in kept]
+    items = sorted(result.items, key=lambda item: item.start)
+    out = list(result.text)
+    for r in results:
+        i = bisect.bisect_right(starts, r.start) - 1
+        if i < 0 or r.end > kept[i].end or kept[i].entity_type == r.entity_type:
+            continue
+        k, item = kept[i], items[i]
+        operator = operators.get(r.entity_type)
+        if operator is None or operator.operator_name != "custom":
+            continue
+        original = text[r.start : r.end]
+        masked = operator.params["lambda"](original)
+        if len(masked) != len(original) or item.end - item.start != k.end - k.start:
+            continue
+        offset = item.start + r.start - k.start
+        for j, (before, after) in enumerate(zip(original, masked, strict=True)):
+            if before != after:
+                out[offset + j] = after
+    return "".join(out)

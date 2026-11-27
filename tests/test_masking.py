@@ -88,13 +88,14 @@ def test_korean_mask_masks_neighbours_separately(korean_analyzer):
     )
 
 
-def test_korean_mask_keeps_the_higher_scored_of_overlapping_results():
+def test_korean_mask_hides_what_either_nested_rule_hides():
+    # 바깥 계좌 규칙은 끝 2자리를, 안쪽 전화 규칙은 끝 4자리를 가린다
     text = "번호 110-123-456789"
     results = [
         RecognizerResult("KR_BANK_ACCOUNT", 3, 17, 0.75),
         RecognizerResult("KR_PHONE", 7, 17, 0.4),
     ]
-    assert korean_mask(text, results) == "번호 110-***-****89"
+    assert korean_mask(text, results) == "번호 110-***-******"
 
 
 def test_korean_mask_merges_overlapping_results_of_one_entity(korean_analyzer):
@@ -110,6 +111,17 @@ def test_korean_mask_masks_the_remainder_of_a_partial_loser():
         RecognizerResult("KR_PHONE", 3, 6, 0.5),
     ]
     assert korean_mask("홍길동010", results) == "홍*동***"
+
+
+def test_korean_mask_masks_a_name_inside_an_address():
+    # 주소 규칙은 숫자만 가리므로 주소에 묻힌 이름은 이름 규칙으로 가린다
+    text = "서울 강남구 테헤란로 152 받는 분 김민수 101호"
+    start = text.index("김민수")
+    results = [
+        RecognizerResult("KR_ADDRESS", 0, len(text), 0.6),
+        RecognizerResult("PERSON", start, start + 3, 0.85),
+    ]
+    assert korean_mask(text, results) == "서울 강남구 테헤란로 *** 받는 분 김*수 ***호"
 
 
 def test_korean_mask_takes_custom_operators():
