@@ -1,5 +1,6 @@
-"""Presidio용 한국 전화번호·계좌번호 recognizer와 한국어 컨텍스트 강화기."""
+"""Presidio용 한국어 개인정보 recognizer, 컨텍스트 강화기, 마스킹, 가명 치환."""
 
+from .analyzer import create_korean_analyzer
 from .korean_context_enhancer import KoreanContextAwareEnhancer
 from .kr_bank_account_recognizer import KrBankAccountRecognizer
 from .kr_phone_recognizer import KrPhoneRecognizer
@@ -11,4 +12,5 @@ __all__ = [
     "KoreanContextAwareEnhancer",
     "KrBankAccountRecognizer",
     "KrPhoneRecognizer",
+    "create_korean_analyzer",
 ]

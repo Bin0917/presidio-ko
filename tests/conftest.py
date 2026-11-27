@@ -2,7 +2,11 @@ import pytest
 from presidio_analyzer import AnalyzerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 
-from presidio_ko import KOREAN_RECOGNIZERS, KoreanContextAwareEnhancer
+from presidio_ko import (
+    KOREAN_RECOGNIZERS,
+    KoreanContextAwareEnhancer,
+    create_korean_analyzer,
+)
 
 
 @pytest.fixture(scope="session")
@@ -27,3 +31,8 @@ def analyzer(nlp_engine):
     for recognizer in KOREAN_RECOGNIZERS:
         analyzer.registry.add_recognizer(recognizer)
     return analyzer
+
+
+@pytest.fixture(scope="session")
+def korean_analyzer():
+    return create_korean_analyzer()
