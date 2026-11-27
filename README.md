@@ -38,7 +38,7 @@ presidio-analyzer 2.2.366 기준입니다. 2.2.364 이상에서 동작합니다.
 ## 설치
 
 ```bash
-pip install presidio-ko
+pip install https://github.com/Bin0917/presidio-ko/releases/download/v0.1.0/presidio_ko-0.1.0-py3-none-any.whl
 python -m spacy download ko_core_news_sm
 ```
 
