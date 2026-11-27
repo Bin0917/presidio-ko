@@ -23,10 +23,9 @@ _PARTICLES = [
 ]
 _SUFFIXES = sorted(
     {"님", "씨"}
-    | {t + p for t in ("님", "씨") for p in _PARTICLES}
     | set(_PARTICLES)
     | {"에게서", "에게", "한테", "께서", "에서", "으로", "이고요", "이고", "이며"}
-    | {"입니다", "이에요", "이다"},
+    | {"입니다", "이에요", "예요", "이다", "라고", "이라고", "이세요", "이랑", "랑"},
     key=len,
     reverse=True,
 )
@@ -49,10 +48,14 @@ _PS_LABELS = {"PS", "PERSON"}
 
 
 def _strip_suffix(word: str) -> str:
-    for suffix in _SUFFIXES:
-        keep = 3 if len(suffix) == 1 else 2
-        if word.endswith(suffix) and len(word) - len(suffix) >= keep:
-            return word[: -len(suffix)]
+    for _ in range(3):
+        for suffix in _SUFFIXES:
+            keep = 3 if len(suffix) == 1 else 2
+            if word.endswith(suffix) and len(word) - len(suffix) >= keep:
+                word = word[: -len(suffix)]
+                break
+        else:
+            break
     return word
 
 

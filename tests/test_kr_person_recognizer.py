@@ -125,3 +125,35 @@ def test_foods_and_lookup_words_are_not_people(korean_analyzer, text):
 def test_four_letter_names_need_a_compound_surname():
     assert labeled("성명: 남궁민수") == [("남궁민수", 0.85)]
     assert labeled("성명: 김치찌개") == []
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("고객명: 홍길동님께서 오셨습니다", "홍길동"),
+        ("고객명: 홍길동님에게 연락", "홍길동"),
+        ("예금주 홍길동씨에게 송금", "홍길동"),
+        ("수취인 김민수씨한테 보냄", "김민수"),
+        ("담당자 김민수님으로 변경", "김민수"),
+        ("이름은 김민수라고 합니다", "김민수"),
+        ("성명: 김민수예요", "김민수"),
+        ("성명: 김민준이에요", "김민준"),
+        ("성명: 김민수입니다", "김민수"),
+        ("성명: 김민수이고 연락처는", "김민수"),
+        ("성명: 김민준이며 주소는", "김민준"),
+        ("성함: 김민수님이세요", "김민수"),
+    ],
+)
+def test_honorific_and_ending_are_stripped_together(text, name):
+    assert labeled(text) == [(name, 0.85)]
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("어제 김민수님께서 방문하셨습니다.", "김민수"),
+        ("김민수씨에게 연락했습니다.", "김민수"),
+    ],
+)
+def test_spacy_person_strips_honorific_and_particle(korean_analyzer, text, name):
+    assert [n for n, _ in found(korean_analyzer, text)] == [name]
