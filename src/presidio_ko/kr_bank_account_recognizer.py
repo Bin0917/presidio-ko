@@ -3,7 +3,7 @@ from typing import Optional
 
 from presidio_analyzer import Pattern
 
-from ._common import DASH, END, KoreanPatternRecognizer
+from ._common import DASH, END, START, KoreanPatternRecognizer
 
 # 은행별 하이픈 표기 형식(그룹별 자릿수). 출처는 README 참고.
 BANK_FORMATS = [
@@ -27,7 +27,7 @@ _MOBILE_PREFIXES = ("010", "011", "016", "017", "018", "019")
 # 숫자·영문자 바로 뒤, "숫자+대시" 뒤, "+82"의 82에서는 시작하지 않는다
 # (더 긴 번호·ID, 국제 형식 전화번호의 일부).
 # "신한-110-..."처럼 문자+대시 뒤는 허용한다.
-_START = rf"(?<![\dA-Za-z])(?<!\d{DASH})(?!(?<=\+)82)"
+_START = START + r"(?<![A-Za-z])(?!(?<=\+)82)"
 # 숫자는 [0-9]만 본다. regex의 \d는 아랍 숫자 등도 받는데 전화번호 패턴은
 # ASCII만 보므로, 그런 숫자로 쓴 전화번호가 계좌로 잡힌다
 _KNOWN = "|".join(DASH.join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS)

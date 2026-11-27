@@ -1,6 +1,6 @@
 from presidio_analyzer import Pattern
 
-from ._common import DASH, END, KoreanPatternRecognizer
+from ._common import DASH, END, START, KoreanPatternRecognizer
 
 # 가로 공백만 구분자로 본다. 줄바꿈까지 받으면 표의 열처럼 줄마다 따로 적힌 숫자가
 # 하나의 번호로 이어진다
@@ -12,10 +12,9 @@ _TRUNK = rf"(?:0|(?:\+82|\(\+82\)){_SEP}?(?:\(0\){_GAP}*|0)?)"
 _MOBILE = r"1[016789]"
 # 지역번호, 070 인터넷전화, 0502~0508 안심번호
 _AREA = r"(?:2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|50[2-8])"
-_START = rf"(?<!\d)(?<!\d{DASH})"
 _LOCAL = rf"\d{{3,4}}{_SEP}\d{{4}}"
 # 괄호 지역번호: (02) 123-4567, 02)123-4567
-_PAREN = rf"(?:\(|(?<![\d(])(?<!\d{DASH}))0"
+_PAREN = rf"(?:\(|{START}(?<!\())0"
 _PAREN_CLOSE = rf"\){_GAP}*"
 
 
@@ -40,16 +39,16 @@ class KrPhoneRecognizer(KoreanPatternRecognizer):
     PATTERNS = [
         Pattern(
             "KR Mobile Phone",
-            _START
+            START
             + _TRUNK
             + _MOBILE
-            + rf"(?:{_SEP}\d{{3,4}}(?:{_SEP})?|\d{{3,4}}{_SEP})\d{{4}}"
+            + rf"(?:{_SEP}\d{{3,4}}{_SEP}?|\d{{3,4}}{_SEP})\d{{4}}"
             + END,
             0.5,
         ),
         Pattern(
             "KR Mobile Phone (no separator)",
-            rf"(?<![\dA-Za-z])(?<!\d{DASH})" + _TRUNK + _MOBILE + r"\d{7,8}" + END,
+            START + r"(?<![A-Za-z])" + _TRUNK + _MOBILE + r"\d{7,8}" + END,
             0.5,
         ),
         Pattern(
@@ -59,7 +58,7 @@ class KrPhoneRecognizer(KoreanPatternRecognizer):
         ),
         Pattern(
             "KR Landline Phone",
-            _START + _TRUNK + _AREA + _SEP + _LOCAL + END,
+            START + _TRUNK + _AREA + _SEP + _LOCAL + END,
             0.4,
         ),
         Pattern(
