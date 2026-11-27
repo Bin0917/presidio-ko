@@ -48,6 +48,8 @@ def test_matches_bank_account_formats(account):
         ("신한-110-123-456789", "110-123-456789"),
         ("KB-123456-78-901234", "123456-78-901234"),
         ("110–123–456789", "110–123–456789"),  # en dash (PDF·OCR 추출문)
+        ("계좌 110−123−456789", "110−123−456789"),  # 빼기 기호(U+2212)
+        ("계좌+110-123-456789", "110-123-456789"),  # 국가번호가 아닌 + 뒤
     ],
 )
 def test_matches_account_in_surrounding_text(text, expected):
@@ -80,6 +82,13 @@ def test_unlisted_format_is_kept_with_lower_score(account):
         "123-45-6789",  # 10자리 미만
         "123456789012",  # 구분자 없는 숫자열
         "상품코드 SKU110-123-456789",  # 영숫자 코드
+        "010-123-45678",  # 자릿수를 잘못 끊은 휴대폰
+        "010-12345-678",
+        "011-1234-567",
+        "(02) 123-4567",
+        "연락처 +8210-1234-5678",  # 국제 형식 전화번호의 일부
+        "+82010-1234-5678",
+        "٠١٠-١٢٣٤-٥٦٧٨",  # 전각 이외의 유니코드 숫자
     ],
 )
 def test_ignores_non_account_numbers(text):
@@ -109,26 +118,3 @@ def test_context_word_raises_score(analyzer, text):
 
 def test_empty_context_list_disables_context():
     assert KrBankAccountRecognizer(context=[]).context == []
-
-
-# 국제 형식 전화번호의 일부나 전각 이외의 유니코드 숫자는 계좌로 잡지 않는다
-@pytest.mark.parametrize(
-    "text", ["연락처 +8210-1234-5678", "+82010-1234-5678", "٠١٠-١٢٣٤-٥٦٧٨"]
-)
-def test_ignores_international_phone_and_non_ascii_digits(text):
-    assert found(text) == []
-
-
-def test_matches_account_after_plus_that_is_not_country_code():
-    assert found("계좌+110-123-456789") == ["110-123-456789"]
-
-
-@pytest.mark.parametrize(
-    "text", ["010-123-45678", "010-12345-678", "011-1234-567", "(02) 123-4567"]
-)
-def test_ignores_phone_like_numbers(text):
-    assert found(text) == []
-
-
-def test_matches_account_with_minus_sign_separator():
-    assert found("계좌 110−123−456789") == ["110−123−456789"]

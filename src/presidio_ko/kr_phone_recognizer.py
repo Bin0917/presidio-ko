@@ -13,9 +13,9 @@ _MOBILE = r"1[016789]"
 # 지역번호, 070 인터넷전화, 0502~0508 안심번호
 _AREA = r"(?:2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|50[2-8])"
 _LOCAL = rf"\d{{3,4}}{_SEP}\d{{4}}"
-# 괄호 지역번호: (02) 123-4567, 02)123-4567
+# 괄호 지역번호: (02) 123-4567, 02)123-4567, (02)-123-4567
 _PAREN = rf"(?:\(|{START}(?<!\())0"
-_PAREN_CLOSE = rf"\){_GAP}*"
+_PAREN_CLOSE = rf"\){_GAP}*(?:{DASH}{_GAP}*)?"
 
 
 class KrPhoneRecognizer(KoreanPatternRecognizer):
