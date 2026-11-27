@@ -40,12 +40,21 @@ def mask_bank_account(account: str) -> str:
     return _mask_digits(account, lambda i, n: i < first or i >= n - 2)
 
 
+# 도로명(로·길)이나 지번(동·리·가) 끝 바로 뒤에 번호가 온다.
+# "3길", "152번길", "2가"는 이름의 일부다
+_ADDRESS_NUMBER = re.compile(
+    r"[로길동리가](?:\s?\d+(?:번길|길|가))?(?=\s?(?:산\s?)?\d)"
+)
+_UNIT_NAME = re.compile(r"[A-Za-z]+(?=동)|(?<![가-힣])(?:에이|비|씨|디)(?=동)")
+
+
 def mask_address(address: str) -> str:
-    """도로명·지번 뒤 첫 번호부터 숫자를 가린다. 번호를 못 찾으면 그대로 둔다."""
-    start = re.search(r"(?<=[로길동리가산])\s+(?=\d)", address)
+    """도로명·지번 뒤 숫자와 동 이름(A동, 에이동)을 가린다. 번호가 없으면 둔다."""
+    start = _ADDRESS_NUMBER.search(address)
     if not start:
         return address
-    return address[: start.end()] + re.sub(r"\d", "*", address[start.end() :])
+    tail = _UNIT_NAME.sub(lambda m: "*" * len(m.group()), address[start.end() :])
+    return address[: start.end()] + re.sub(r"\d", "*", tail)
 
 
 def mask_email(email: str) -> str:

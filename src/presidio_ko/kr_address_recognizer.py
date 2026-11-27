@@ -1,6 +1,6 @@
 from presidio_analyzer import Pattern
 
-from ._common import KoreanPatternRecognizer
+from ._common import COLON_GAP, GAP, KoreanPatternRecognizer
 
 # 정식 명칭이 약칭을 포함하므로 긴 것을 앞에 둔다
 _SIDO = (
@@ -11,32 +11,32 @@ _SIDO = (
 )
 _SIGUNGU = r"(?:[가-힣]{1,7}(?:시|군|구)\s?){1,2}"
 _NUMBER = r"\d+(?:-\d+)?"
-_ROAD = rf"[가-힣0-9]{{1,12}}(?:로|길)\s?{_NUMBER}"
+# "테헤란로 152번길 10", "영등포로3길 12"의 번길·길은 도로명의 일부다
+_ROAD = rf"[가-힣0-9]{{1,12}}(?:로|길)(?:\s?\d+(?:번길|길))?\s?{_NUMBER}(?!번?길)"
 _LOT = rf"[가-힣0-9]{{1,12}}(?:동|리|가)\s?산?\s?{_NUMBER}(?:번지)?"
-# 건물명은 경계가 모호해 넣지 않는다
-_DETAIL = r"(?:,?\s*(?:\d+동|\d+층|\d+호|\([^)\s]+동\)))*"
+_UNIT = r"(?:(?:[A-Za-z]|에이|비|씨|디|\d+)동|\d+층|\d+호|\([^)\s]{1,10}동\))"
+# 건물명은 뒤에 동·호가 이어질 때만 범위에 넣는다. 경계가 거기서 정해진다
+_BUILDING = (
+    r"(?:,?\s?[가-힣A-Za-z][가-힣A-Za-z0-9]{1,14}\s?(?=(?:[A-Za-z]|\d+)동|\d+호))?"
+)
+_DETAIL = rf"(?:,\s?\d+-\d+)?{_BUILDING}(?:,?\s?{_UNIT})*"
 _START = r"(?<![가-힣0-9])"
+# 시도가 없으면 주소 라벨 바로 뒤여야 한다. "처음으로 1번"도 시군구+도로명 모양이다
+_LABEL = rf"(?<=(?:주소지?|소재지|수령지|배송지|거주지)[은는]?{GAP}{COLON_GAP})"
+_HEAD = rf"{_START}(?:(?:{_SIDO})\s?|{_LABEL}){_SIGUNGU}"
 
 
 class KrAddressRecognizer(KoreanPatternRecognizer):
     """
-    한국 주소를 인식한다. 시도(생략 가능) + 시군구 + 도로명·건물번호 또는 지번에
-    동·층·호 상세가 이어진 부분까지다. 지번 주소는 시도가 있어야 한다.
+    한국 주소를 인식한다. 시도(또는 앞의 주소 라벨) + 시군구 + 도로명·건물번호나 지번에
+    건물명·동·호 상세가 이어진 부분까지다. 건물명은 뒤에 동·호가 있을 때만 포함한다.
     """
 
     ENTITY = "KR_ADDRESS"
 
     PATTERNS = [
-        Pattern(
-            "KR Address (road)",
-            rf"{_START}(?:(?:{_SIDO})\s?)?{_SIGUNGU}{_ROAD}{_DETAIL}(?!\d)",
-            0.6,
-        ),
-        Pattern(
-            "KR Address (lot)",
-            rf"{_START}(?:{_SIDO})\s?{_SIGUNGU}{_LOT}{_DETAIL}(?!\d)",
-            0.5,
-        ),
+        Pattern("KR Address (road)", rf"{_HEAD}{_ROAD}{_DETAIL}(?!\d)", 0.6),
+        Pattern("KR Address (lot)", rf"{_HEAD}{_LOT}{_DETAIL}(?!\d)", 0.5),
     ]
 
     CONTEXT = ["주소", "소재지", "수령지", "배송지", "거주지", "address"]
