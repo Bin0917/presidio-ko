@@ -1,9 +1,9 @@
 import re
-from typing import List, Optional
+from typing import Optional
 
-from presidio_analyzer import Pattern, PatternRecognizer
+from presidio_analyzer import Pattern
 
-from .kr_phone_recognizer import DASH, FULL_WIDTH
+from ._common import DASH, END, KoreanPatternRecognizer
 
 # 은행별 하이픈 표기 형식(그룹별 자릿수). 출처는 README 참고.
 BANK_FORMATS = [
@@ -22,8 +22,15 @@ BANK_FORMATS = [
 
 # 0으로 시작하는 이 모양은 전화번호(0XX-XXXX-XXXX)나 050X 안심번호다
 _PHONE_SHAPES = {(3, 3, 4), (3, 4, 4), (4, 3, 4), (4, 4, 4)}
-# 휴대폰 앞자리. 이걸로 시작하는 3그룹 10~11자리는 자릿수를 잘못 끊은 휴대폰 번호다
 _MOBILE_PREFIXES = ("010", "011", "016", "017", "018", "019")
+
+# 숫자·영문자 바로 뒤, "숫자+대시" 뒤, "+82"의 82에서는 시작하지 않는다
+# (더 긴 번호·ID, 국제 형식 전화번호의 일부).
+# "신한-110-..."처럼 문자+대시 뒤는 허용한다.
+_START = rf"(?<![\dA-Za-z])(?<!\d{DASH})(?!(?<=\+)82)"
+# 숫자는 [0-9]만 본다. regex의 \d는 아랍 숫자 등도 받는데 전화번호 패턴은
+# ASCII만 보므로, 그런 숫자로 쓴 전화번호가 계좌로 잡힌다
+_KNOWN = "|".join(DASH.join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS)
 
 
 def _starts_with_date(groups):
@@ -39,88 +46,44 @@ def _starts_with_date(groups):
     )
 
 
-# 숫자·영문자 바로 뒤, "숫자+대시" 뒤, "+82"의 82에서는 시작하지 않고
-# (더 긴 번호·ID, 국제 형식 전화번호의 일부)
-# 대시+숫자가 이어지면 끝나지 않는다. "신한-110-..."처럼 문자+대시 뒤는 허용한다.
-# 대시는 전화번호와 같은 정의(유니코드 대시와 빼기 기호 U+2212)
-_START = rf"(?<![\dA-Za-z])(?<!\d{DASH})(?!(?<=\+)82)"
-_END = rf"(?!{DASH}?\d)"
-# 숫자는 [0-9]만 본다. regex의 \d는 아랍 숫자 등도 받는데 전화번호 패턴은
-# 그렇지 않아, 그런 숫자로 쓴 전화번호가 계좌로 잡힌다.
-# 전각 숫자는 analyze()에서 ASCII로 바꾼 뒤 검사한다
-# 예: (3, 3, 6) → [0-9]{3}대시[0-9]{3}대시[0-9]{6}
-_KNOWN = "|".join(DASH.join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS)
-
-
-class KrBankAccountRecognizer(PatternRecognizer):
+class KrBankAccountRecognizer(KoreanPatternRecognizer):
     """
     하이픈으로 표기한 한국 은행 계좌번호를 인식한다.
 
-    - 은행별 표기 형식(BANK_FORMATS)과 그룹 자릿수가 맞으면 0.4
-    - 그 밖의 3~4그룹 숫자열은 형식표에 없는 실제 계좌일 수 있어 0.1로 남긴다
-    - validate_result가 계좌일 수 없는 모양을 걸러낸다: 10~14자리가 아닌 것
-      (날짜·카드번호), 날짜로 시작하는 것, 사업자등록번호(3-2-5),
-      0으로 시작하는 전화번호 모양
+    은행별 표기 형식(BANK_FORMATS)과 그룹 자릿수가 맞으면 0.4, 그 밖의 3~4그룹
+    숫자열은 형식표에 없는 실제 계좌일 수 있어 0.1로 남긴다. 계좌번호일 수 없는
+    모양은 validate_result가 걸러낸다.
 
     계좌번호 체크섬은 은행마다 다르고 공개돼 있지 않아 검증할 수 없다. 그래서
     형식이 맞아도 점수를 올리지 않고 주변에 "계좌", "은행" 같은 단어가 있을 때만
     올린다. 같은 모양의 주문번호·문서번호는 계좌로 오탐될 수 있다.
-
-    :param patterns: List of patterns to be used by this recognizer
-    :param context: List of context words to increase confidence in detection
-    :param supported_language: Language this recognizer supports
-    :param supported_entity: The entity this recognizer can detect
     """
 
-    COUNTRY_CODE = "kr"
+    ENTITY = "KR_BANK_ACCOUNT"
 
     PATTERNS = [
-        Pattern("KR Bank Account (known format)", _START + f"(?:{_KNOWN})" + _END, 0.4),
+        Pattern("KR Bank Account (known format)", _START + f"(?:{_KNOWN})" + END, 0.4),
         Pattern(
             "KR Bank Account (other format)",
-            _START + rf"[0-9]{{3,6}}(?:{DASH}[0-9]{{1,7}}){{2,3}}" + _END,
+            _START + rf"[0-9]{{3,6}}(?:{DASH}[0-9]{{1,7}}){{2,3}}" + END,
             0.1,
         ),
     ]
 
     CONTEXT = ["계좌", "계좌번호", "은행", "입금", "account", "bank"]
 
-    def __init__(
-        self,
-        patterns: Optional[List[Pattern]] = None,
-        context: Optional[List[str]] = None,
-        supported_language: str = "ko",
-        supported_entity: str = "KR_BANK_ACCOUNT",
-        name: Optional[str] = None,
-    ):
-        super().__init__(
-            supported_entity=supported_entity,
-            patterns=patterns if patterns else self.PATTERNS,
-            context=context if context is not None else self.CONTEXT,
-            supported_language=supported_language,
-            name=name,
-        )
-
-    def analyze(self, text, entities, nlp_artifacts=None, regex_flags=None):
-        return super().analyze(
-            text.translate(FULL_WIDTH), entities, nlp_artifacts, regex_flags
-        )
-
     def validate_result(self, pattern_text: str) -> Optional[bool]:
         """
-        계좌번호일 수 없는 모양만 걸러낸다.
+        계좌번호일 수 없는 모양을 걸러낸다.
 
         통과해도 True가 아닌 None을 돌려준다. PatternRecognizer는 True를 받으면 점수를
-        1.0으로 올리는데, 체크섬 없는 형식 검증만으로는 그만큼 확신할 수 없기 때문이다.
-
-        :param pattern_text: the text to validated.
-        Only the part in text that was detected by the regex engine
-        :return: False if it cannot be an account number, None otherwise.
+        1.0으로 올리는데, 체크섬 없는 형식 검증만으로는 그만큼 확신할 수 없다.
         """
         groups = re.split(r"\D", pattern_text)
         shape = tuple(len(group) for group in groups)
-        if not 10 <= sum(shape) <= 14:
-            return False
+        digits = sum(shape)
+        if not 10 <= digits <= 14:
+            return False  # 날짜·카드번호
         if _starts_with_date(groups) or shape == (3, 2, 5):
             return False  # 날짜(2024-01-15-…), 사업자등록번호
         if pattern_text[0] == "0" and shape in _PHONE_SHAPES:
@@ -128,7 +91,7 @@ class KrBankAccountRecognizer(PatternRecognizer):
         if (
             pattern_text.startswith(_MOBILE_PREFIXES)
             and len(shape) == 3
-            and sum(shape) <= 11
+            and digits <= 11
         ):
             return False  # 010-123-45678처럼 자릿수를 잘못 끊은 휴대폰
         return None
