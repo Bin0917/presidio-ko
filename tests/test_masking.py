@@ -222,3 +222,20 @@ def test_no_operator_pair_reveals_a_nested_name(outer, inner):
         if OPERATORS[name] is not None:
             operators[entity] = OPERATORS[name]
     assert "민" not in korean_mask(NESTED_TEXT, NESTED_RESULTS, operators)
+
+
+def test_remainder_of_a_partial_loser_hides_what_its_whole_rule_hides():
+    results = [
+        RecognizerResult("KR_BRN", 0, 8, 0.9),
+        RecognizerResult("CREDIT_CARD", 3, 22, 0.5),
+    ]
+    masked = korean_mask("AB 4111-1111-1111-1111", results)
+    assert masked == "** ****-11**-****-1111"
+
+
+def test_overlap_shows_only_what_both_partial_rules_show():
+    results = [
+        RecognizerResult("KR_BANK_ACCOUNT", 0, 13, 0.5),
+        RecognizerResult("KR_PHONE", 4, 18, 0.9),
+    ]
+    assert korean_mask("010-1234-5678-9012", results) == "010-****-**78-****"

@@ -116,30 +116,37 @@ def korean_mask(
 def _mask_with_inner(text, k, results, operators) -> str:
     value = text[k.start : k.end]
     outer = _apply(k.entity_type, value, operators)
-    inner = [
+    others = [
         r
         for r in results
-        if r.entity_type in _RULES
-        and r.entity_type != k.entity_type
-        and k.start <= r.start
-        and r.end <= k.end
+        if r.start < k.end
+        and k.start < r.end
+        and (r.entity_type in _RULES or r.entity_type == k.entity_type)
+        and (r.entity_type, r.start, r.end) != (k.entity_type, k.start, k.end)
     ]
-    if not inner:
+    if not others:
         return outer
     if len(outer) != len(value):
         return outer if _hides(k.entity_type, operators) else mask_all(value)
     chars, replaced = list(outer), []
-    for r in inner:
-        start, end = r.start - k.start, r.end - k.start
-        masked = _apply(r.entity_type, value[start:end], operators)
-        if len(masked) != end - start:
-            if _hides(r.entity_type, operators):
-                replaced.append(RecognizerResult(r.entity_type, start, end, r.score))
+    for r in others:
+        original = text[r.start : r.end]
+        masked = _apply(r.entity_type, original, operators)
+        inside = k.start <= r.start and r.end <= k.end
+        if len(masked) != len(original):
+            if not inside:
                 continue
-            masked = mask_all(value[start:end])
-        for i, c in enumerate(masked, start):
-            if c != value[i]:
-                chars[i] = c
+            if _hides(r.entity_type, operators):
+                replaced.append(
+                    RecognizerResult(
+                        r.entity_type, r.start - k.start, r.end - k.start, r.score
+                    )
+                )
+                continue
+            masked = mask_all(original)
+        for i in range(max(r.start, k.start), min(r.end, k.end)):
+            if masked[i - r.start] != text[i]:
+                chars[i - k.start] = masked[i - r.start]
     for r in reversed(drop_overlaps(replaced)):
         chars[r.start : r.end] = _apply(
             r.entity_type, value[r.start : r.end], operators
