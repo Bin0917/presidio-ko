@@ -1,4 +1,3 @@
-import bisect
 import re
 from collections.abc import Callable
 
@@ -6,7 +5,7 @@ from presidio_analyzer import RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-from ._common import FULL_WIDTH, drop_overlaps
+from ._common import FULL_WIDTH, check_results, drop_overlaps
 
 
 def _mask_digits(text: str, keep: Callable[[int, int], bool]) -> str:
@@ -97,6 +96,7 @@ def korean_operators() -> dict[str, OperatorConfig]:
 
 
 _ENGINE = AnonymizerEngine()
+_HIDING = {"replace", "redact", "hash", "encrypt"}
 
 
 def korean_mask(
@@ -105,29 +105,53 @@ def korean_mask(
     operators: dict[str, OperatorConfig] | None = None,
 ) -> str:
     operators = korean_operators() if operators is None else operators
-    kept = drop_overlaps(results)
-    result = _ENGINE.anonymize(text, kept, operators, merge_entities_with_spaces=False)
-    return _mask_contained(text, results, kept, operators, result)
+    check_results(text, results)
+    out, pos = [], 0
+    for k in drop_overlaps(results):
+        out += [text[pos : k.start], _mask_with_inner(text, k, results, operators)]
+        pos = k.end
+    return "".join(out) + text[pos:]
 
 
-def _mask_contained(text, results, kept, operators, result) -> str:
-    starts = [k.start for k in kept]
-    items = sorted(result.items, key=lambda item: item.start)
-    out = list(result.text)
-    for r in results:
-        i = bisect.bisect_right(starts, r.start) - 1
-        if i < 0 or r.end > kept[i].end or kept[i].entity_type == r.entity_type:
-            continue
-        k, item = kept[i], items[i]
-        operator = operators.get(r.entity_type)
-        if operator is None or operator.operator_name != "custom":
-            continue
-        original = text[r.start : r.end]
-        masked = operator.params["lambda"](original)
-        if len(masked) != len(original) or item.end - item.start != k.end - k.start:
-            continue
-        offset = item.start + r.start - k.start
-        for j, (before, after) in enumerate(zip(original, masked, strict=True)):
-            if before != after:
-                out[offset + j] = after
-    return "".join(out)
+def _mask_with_inner(text, k, results, operators) -> str:
+    value = text[k.start : k.end]
+    outer = _apply(k.entity_type, value, operators)
+    inner = [
+        r
+        for r in results
+        if r.entity_type in _RULES
+        and r.entity_type != k.entity_type
+        and k.start <= r.start
+        and r.end <= k.end
+    ]
+    if not inner:
+        return outer
+    if len(outer) != len(value):
+        return outer if _hides(k.entity_type, operators) else mask_all(value)
+    chars, replaced = list(outer), []
+    for r in inner:
+        start, end = r.start - k.start, r.end - k.start
+        masked = _apply(r.entity_type, value[start:end], operators)
+        if len(masked) != end - start:
+            if _hides(r.entity_type, operators):
+                replaced.append(RecognizerResult(r.entity_type, start, end, r.score))
+                continue
+            masked = mask_all(value[start:end])
+        for i, c in enumerate(masked, start):
+            if c != value[i]:
+                chars[i] = c
+    for r in reversed(drop_overlaps(replaced)):
+        chars[r.start : r.end] = _apply(
+            r.entity_type, value[r.start : r.end], operators
+        )
+    return "".join(chars)
+
+
+def _apply(entity: str, value: str, operators: dict[str, OperatorConfig]) -> str:
+    result = RecognizerResult(entity, 0, len(value), 1.0)
+    return _ENGINE.anonymize(value, [result], operators).text
+
+
+def _hides(entity: str, operators: dict[str, OperatorConfig]) -> bool:
+    operator = operators.get(entity, operators.get("DEFAULT"))
+    return operator is None or operator.operator_name in _HIDING

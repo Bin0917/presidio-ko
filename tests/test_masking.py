@@ -185,3 +185,40 @@ def test_review_repros_mask_every_detected_character(
     pseudonymizer = Pseudonymizer()
     assert pseudonymizer.pseudonymize(text, results) == pseudonymized
     assert pseudonymizer.restore(pseudonymized) == text
+
+
+NESTED_TEXT = "서울 강남구 테헤란로 152 담당 김민수 대리 101호"
+NESTED_RESULTS = [
+    RecognizerResult("KR_ADDRESS", 0, len(NESTED_TEXT), 0.6),
+    RecognizerResult(
+        "PERSON", NESTED_TEXT.index("김"), NESTED_TEXT.index("김") + 3, 0.85
+    ),
+]
+OPERATORS = {
+    "rule": None,
+    "replace": OperatorConfig("replace"),
+    "redact": OperatorConfig("redact"),
+    "hash": OperatorConfig("hash"),
+    "keep": OperatorConfig("keep"),
+    "mask": OperatorConfig(
+        "mask", {"masking_char": "#", "chars_to_mask": 3, "from_end": True}
+    ),
+    "grow": OperatorConfig("custom", {"lambda": lambda value: value + "!"}),
+}
+
+
+def test_name_inside_an_address_takes_its_own_replace_operator():
+    operators = korean_operators() | {"PERSON": OperatorConfig("replace")}
+    assert korean_mask(NESTED_TEXT, NESTED_RESULTS, operators) == (
+        "서울 강남구 테헤란로 *** 담당 <PERSON> 대리 ***호"
+    )
+
+
+@pytest.mark.parametrize("outer", OPERATORS, ids=str)
+@pytest.mark.parametrize("inner", [k for k in OPERATORS if k != "keep"], ids=str)
+def test_no_operator_pair_reveals_a_nested_name(outer, inner):
+    operators = korean_operators()
+    for entity, name in (("KR_ADDRESS", outer), ("PERSON", inner)):
+        if OPERATORS[name] is not None:
+            operators[entity] = OPERATORS[name]
+    assert "민" not in korean_mask(NESTED_TEXT, NESTED_RESULTS, operators)

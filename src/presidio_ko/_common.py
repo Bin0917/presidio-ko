@@ -2,6 +2,7 @@ import heapq
 from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
+from presidio_anonymizer.entities import InvalidParamError
 
 FULL_WIDTH = {code: code - 0xFEE0 for code in range(0xFF01, 0xFF5F)}
 
@@ -27,6 +28,15 @@ COLON_GAP = rf"(?:[:：]{GAP})?"
 DASH = r"[\p{Pd}\u2212]"
 START = rf"(?<!\d)(?<!\d{DASH})"
 END = rf"(?!{DASH}?\d)"
+
+
+def check_results(text: str, results: List[RecognizerResult]) -> None:
+    for r in results:
+        if not 0 <= r.start < r.end <= len(text):
+            raise InvalidParamError(
+                f"Invalid result {r.entity_type} {r.start}-{r.end} "
+                f"for a text of length {len(text)}"
+            )
 
 
 def drop_overlaps(results: List[RecognizerResult]) -> List[RecognizerResult]:
