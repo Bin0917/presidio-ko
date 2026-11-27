@@ -24,6 +24,8 @@ HOSTILE = {
     "ro_space": "로 " * (N // 2),
     "detail": "서울 강남구 테헤란로 1" + ", 1동" * (N // 4) + "x",
     "detail_space": "서울 강남구 테헤란로 1" + " 1동" * (N // 3) + "1",
+    "building_words": "서울 강남구 테헤란로 1" + " 가1" * (N // 3) + "x",
+    "building_digits": "서울 강남구 테헤란로 1 " + "1 " * (N // 2) + "x",
     "digits": "1" * N,
     "digits_dash": "1-" * (N // 2),
     "digits_space": "1 " * (N // 2),
