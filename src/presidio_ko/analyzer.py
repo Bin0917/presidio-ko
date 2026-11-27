@@ -5,13 +5,13 @@ from presidio_analyzer.nlp_engine import NlpEngine, NlpEngineProvider
 from presidio_analyzer.predefined_recognizers import CreditCardRecognizer
 from presidio_analyzer.predefined_recognizers.country_specific.korea import (
     KrBrnRecognizer,
-    KrDriverLicenseRecognizer,
     KrFrnRecognizer,
     KrPassportRecognizer,
     KrRrnRecognizer,
 )
 
 from .korean_context_enhancer import KoreanContextAwareEnhancer
+from .kr_driver_license_recognizer import KrDriverLicenseRecognizer
 
 # 업스트림 PhoneRecognizer는 KR_PHONE과 같은 번호를 PHONE_NUMBER로 한 번 더 보고하고,
 # SpacyRecognizer는 PERSON을 KrPersonRecognizer와 따로 낸다
