@@ -32,6 +32,7 @@ def mask(entity, value, operators=None):
         ("KR_BANK_ACCOUNT", "123456-78-901234", "123456-**-****34"),
         ("KR_BANK_ACCOUNT", "3333041234567", "333********67"),
         ("EMAIL_ADDRESS", "nguyen@example.com", "ng****@example.com"),
+        ("EMAIL_ADDRESS", "ｈｏｎｇ＠ｘ．ｃｏｍ", "ｈｏ****＠ｘ．ｃｏｍ"),
         ("CREDIT_CARD", "4111-1111-1111-1111", "4111-11**-****-1111"),
         ("KR_VEHICLE_PLATE", "12가 3456", "12가 **56"),
         ("KR_ADDRESS", "서울 영등포구 영등포로3길 12", "서울 영등포구 영등포로3길 **"),

@@ -10,7 +10,7 @@ from presidio_analyzer.predefined_recognizers.country_specific.korea import (
     KrRrnRecognizer,
 )
 
-from ._common import END, START
+from ._common import END, FULL_WIDTH, START
 from .korean_context_enhancer import KoreanContextAwareEnhancer
 from .kr_driver_license_recognizer import KrDriverLicenseRecognizer
 from .kr_phone_recognizer import KrPhoneRecognizer
@@ -42,6 +42,11 @@ class _CardRecognizer(CreditCardRecognizer):
                 for p in phones
             )
         ]
+
+
+class _KoreanAnalyzerEngine(AnalyzerEngine):
+    def analyze(self, text, *args, **kwargs):
+        return super().analyze(text.translate(FULL_WIDTH), *args, **kwargs)
 
 
 def create_korean_analyzer(
@@ -85,7 +90,7 @@ def create_korean_analyzer(
     ]
     for recognizer in upstream + KOREAN_RECOGNIZERS:
         registry.add_recognizer(recognizer)
-    return AnalyzerEngine(
+    return _KoreanAnalyzerEngine(
         registry=registry,
         nlp_engine=nlp_engine,
         supported_languages=["ko"],

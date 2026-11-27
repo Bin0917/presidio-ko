@@ -78,3 +78,37 @@ def test_korean_rrn_labels_raise_the_score(korean_analyzer, label):
         if r.entity_type == "KR_RRN"
     ]
     assert result.score >= 0.85
+
+
+@pytest.mark.parametrize(
+    ("text", "entity", "value"),
+    [
+        (
+            "주민번호 ９００１０１-１２３４５６８",
+            "KR_RRN",
+            "９００１０１-１２３４５６８",
+        ),
+        (
+            "카드 ４１１１-１１１１-１１１１-１１１１",
+            "CREDIT_CARD",
+            "４１１１-１１１１-１１１１-１１１１",
+        ),
+        ("여권번호 Ｍ１２３Ａ４５６７", "KR_PASSPORT", "Ｍ１２３Ａ４５６７"),
+        (
+            "운전면허 １１-１７-１２３４５６-２１",
+            "KR_DRIVER_LICENSE",
+            "１１-１７-１２３４５６-２１",
+        ),
+        ("사업자 ２２０－８１－６２５１７", "KR_BRN", "２２０－８１－６２５１７"),
+        ("연락처 ０１０．１２３４．５６７８", "KR_PHONE", "０１０．１２３４．５６７８"),
+        (
+            "메일 ｈｏｎｇ＠ｅｘａｍｐｌｅ．ｃｏｍ",
+            "EMAIL_ADDRESS",
+            "ｈｏｎｇ＠ｅｘａｍｐｌｅ．ｃｏｍ",
+        ),
+    ],
+)
+def test_full_width_characters_are_detected_at_their_original_place(
+    korean_analyzer, text, entity, value
+):
+    assert (entity, value) in found(korean_analyzer, text)

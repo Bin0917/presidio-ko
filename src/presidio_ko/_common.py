@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
 
-FULL_WIDTH = str.maketrans("０１２３４５６７８９＋（）", "0123456789+()")
+FULL_WIDTH = {code: code - 0xFEE0 for code in range(0xFF01, 0xFF5F)}
 
 ENTITY_LABELS = {
     "PERSON": "이름",

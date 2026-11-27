@@ -6,7 +6,7 @@ from presidio_analyzer import RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-from ._common import drop_overlaps
+from ._common import FULL_WIDTH, drop_overlaps
 
 
 def _mask_digits(text: str, keep: Callable[[int, int], bool]) -> str:
@@ -54,8 +54,8 @@ def mask_address(address: str) -> str:
 
 
 def mask_email(email: str) -> str:
-    local, at, domain = email.partition("@")
-    return local[: 2 if len(local) > 2 else 1] + "****" + at + domain
+    local = email[: len(email.translate(FULL_WIDTH).partition("@")[0])]
+    return local[: 2 if len(local) > 2 else 1] + "****" + email[len(local) :]
 
 
 def mask_credit_card(number: str) -> str:
