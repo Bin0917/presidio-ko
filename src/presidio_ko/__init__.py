@@ -9,7 +9,7 @@ from .kr_health_insurance_recognizer import KrHealthInsuranceRecognizer
 from .kr_person_recognizer import KrPersonRecognizer
 from .kr_phone_recognizer import KrPhoneRecognizer
 from .kr_vehicle_plate_recognizer import KrVehiclePlateRecognizer
-from .masking import korean_operators
+from .masking import korean_mask, korean_operators
 from .pseudonym import Pseudonymizer
 
 KOREAN_RECOGNIZERS = [
@@ -33,5 +33,6 @@ __all__ = [
     "KrVehiclePlateRecognizer",
     "Pseudonymizer",
     "create_korean_analyzer",
+    "korean_mask",
     "korean_operators",
 ]

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from presidio_analyzer import Pattern, PatternRecognizer
+from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
 
 # 전각 숫자·＋·괄호를 ASCII로 바꾼다. 패턴의 0·1·+ 리터럴과 계좌 필터의 "0" 비교는
 # ASCII만 보므로, 그대로 두면 전각 전화번호가 계좌로 잡힌다.
@@ -35,6 +35,15 @@ DASH = r"[\p{Pd}\u2212]"
 # 앞에 숫자나 "숫자+대시"가 붙거나 뒤에 대시·숫자가 이어지면 더 긴 번호의 일부다
 START = rf"(?<!\d)(?<!\d{DASH})"
 END = rf"(?!{DASH}?\d)"
+
+
+def drop_overlaps(results: List[RecognizerResult]) -> List[RecognizerResult]:
+    """겹치는 결과 중 점수가 높고 긴 것만 남겨 위치 순으로 돌려준다."""
+    kept: List[RecognizerResult] = []
+    for r in sorted(results, key=lambda r: (-r.score, r.start - r.end, r.start)):
+        if all(r.end <= k.start or k.end <= r.start for k in kept):
+            kept.append(r)
+    return sorted(kept, key=lambda r: r.start)
 
 
 class KoreanPatternRecognizer(PatternRecognizer):

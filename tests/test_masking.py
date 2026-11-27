@@ -3,7 +3,7 @@ from presidio_analyzer import RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-from presidio_ko import korean_operators
+from presidio_ko import korean_mask, korean_operators
 
 
 def mask(entity, value, operators=None):
@@ -68,3 +68,27 @@ def test_korean_masking_rules(entity, value, masked):
 def test_user_can_override_a_rule():
     operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
     assert mask("KR_PHONE", "010-1234-5678", operators) == "<KR_PHONE>"
+
+
+def test_korean_mask_masks_neighbours_separately(korean_analyzer):
+    # AnonymizerEngine은 공백으로 이웃한 같은 종류를 하나로 합쳐 뒤 4자리만 가린다
+    text = "연락처 010-1234-5678 010-2345-6789 이메일 abcd@x.com efgh@y.com"
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == (
+        "연락처 010-1234-**** 010-2345-**** 이메일 ab****@x.com ef****@y.com"
+    )
+
+
+def test_korean_mask_keeps_the_higher_scored_of_overlapping_results():
+    text = "번호 110-123-456789"
+    results = [
+        RecognizerResult("KR_BANK_ACCOUNT", 3, 17, 0.75),
+        RecognizerResult("KR_PHONE", 7, 17, 0.4),
+    ]
+    assert korean_mask(text, results) == "번호 110-***-****89"
+
+
+def test_korean_mask_takes_custom_operators():
+    results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
+    operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
+    assert korean_mask("010-1234-5678", results, operators) == "<KR_PHONE>"

@@ -6,7 +6,11 @@
 import re
 from collections.abc import Callable
 
+from presidio_analyzer import RecognizerResult
+from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
+
+from ._common import drop_overlaps
 
 
 def _mask_digits(text: str, keep: Callable[[int, int], bool]) -> str:
@@ -91,3 +95,27 @@ def korean_operators() -> dict[str, OperatorConfig]:
     }
     operators["DEFAULT"] = OperatorConfig("replace")
     return operators
+
+
+_ENGINE = AnonymizerEngine()
+
+
+def korean_mask(
+    text: str,
+    results: list[RecognizerResult],
+    operators: dict[str, OperatorConfig] | None = None,
+) -> str:
+    """
+    분석 결과를 한국식으로 가린 문자열을 돌려준다.
+
+    AnonymizerEngine.anonymize는 기본값으로 공백 하나로 이웃한 같은 종류 결과를 합친다.
+    "010-1234-5678 010-2345-6789"가 한 번호로 합쳐지면 뒤 4자리만 가려져 앞 번호가
+    그대로 보이므로 합치지 않는다. 일부만 겹치는 결과도 엔진이 글자를 겹쳐 쓰므로
+    점수가 높은 쪽만 남긴다.
+    """
+    return _ENGINE.anonymize(
+        text,
+        drop_overlaps(results),
+        operators or korean_operators(),
+        merge_entities_with_spaces=False,
+    ).text

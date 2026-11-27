@@ -4,7 +4,7 @@
 
 [Microsoft Presidio](https://github.com/microsoft/presidio)로 한국어 문서의 개인정보를 찾고,
 한국식으로 가리고, LLM에 보낼 때는 되돌릴 수 있게 바꾸는 패키지입니다. 함수 한 번으로 한국어
-분석기를 만들고(`create_korean_analyzer`), 개인정보위 권고 방식의 부분 마스킹(`korean_operators`)과
+분석기를 만들고(`create_korean_analyzer`), 개인정보위 권고 방식의 부분 마스킹(`korean_mask`)과
 되돌릴 수 있는 가명 치환(`Pseudonymizer`)을 씁니다.
 
 *English:* Korean PII detection, Korean-style partial masking, and reversible pseudonymization
@@ -23,16 +23,14 @@ python -m spacy download ko_core_news_sm
 ## 빠른 시작
 
 ```python
-from presidio_anonymizer import AnonymizerEngine
-
-from presidio_ko import Pseudonymizer, create_korean_analyzer, korean_operators
+from presidio_ko import Pseudonymizer, create_korean_analyzer, korean_mask
 
 analyzer = create_korean_analyzer()
 text = "예금주 김민수, 연락처 010-1234-5678, 서울 영등포구 영등포로3길 12, 101동 1001호"
 results = analyzer.analyze(text=text, language="ko")
 
 # 한국식 부분 마스킹
-print(AnonymizerEngine().anonymize(text, results, korean_operators()).text)
+print(korean_mask(text, results))
 
 # 되돌릴 수 있는 가명 치환: LLM에는 자리표시자만 보내고 응답에서 원문을 복원한다
 pseudonymizer = Pseudonymizer()
@@ -73,8 +71,12 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 
 ## 한국식 마스킹
 
-`korean_operators()`는 `AnonymizerEngine.anonymize(operators=...)`에 넘기는 설정입니다.
+`korean_mask(text, results)`는 분석 결과를 아래 규칙으로 가린 문자열을 돌려줍니다.
 개인정보보호위원회 권고와 ISMS-P 관행대로 구분자(대시·공백·점)는 두고 글자·숫자만 `*`로 바꿉니다.
+규칙은 `korean_operators()`에 있고, `AnonymizerEngine.anonymize(operators=...)`에 직접 넘길 수도
+있습니다. 그때는 `merge_entities_with_spaces=False`를 꼭 넘기세요. 기본값은 공백으로 이웃한 같은
+종류를 하나로 합쳐서 `010-1234-5678 010-2345-6789`의 뒤 4자리만 가리고 앞 번호를 그대로 둡니다.
+`korean_mask`는 이 설정을 넣고, 일부만 겹치는 결과는 점수가 높은 쪽만 남깁니다.
 
 | 엔티티 | 규칙 | 예 |
 |---|---|---|
@@ -95,6 +97,7 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 from presidio_anonymizer.entities import OperatorConfig
 
 operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
+masked = korean_mask(text, results, operators)
 ```
 
 ## 한계
