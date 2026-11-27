@@ -24,6 +24,11 @@ ENTITY_LABELS = {
     "EMAIL_ADDRESS": "이메일",
 }
 
+# 가변 길이 lookbehind 안의 공백은 길이를 제한한다. 무제한이면 긴 공백 입력에서
+# 매칭 시간이 입력 길이의 제곱 이상으로 늘어난다
+GAP = r"[	\p{Zs}]{0,3}"
+COLON_GAP = rf"(?:[:：]{GAP})?"
+
 # 유니코드 대시(\p{Pd}: 하이픈, en dash 등)와 OCR에 섞이는 빼기 기호(U+2212).
 # Presidio는 패턴을 regex 모듈로 컴파일하므로 \p{...}를 쓸 수 있다
 DASH = r"[\p{Pd}\u2212]"

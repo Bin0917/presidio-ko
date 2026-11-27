@@ -3,7 +3,7 @@ from typing import Optional
 
 from presidio_analyzer import Pattern
 
-from ._common import DASH, END, START, KoreanPatternRecognizer
+from ._common import COLON_GAP, DASH, END, GAP, START, KoreanPatternRecognizer
 
 # 은행별 하이픈 표기 형식(그룹별 자릿수). 출처는 README 참고.
 BANK_FORMATS = [
@@ -33,14 +33,11 @@ _START = START + r"(?<![A-Za-z])(?!(?<=\+)82)"
 _KNOWN = "|".join(DASH.join(rf"[0-9]{{{n}}}" for n in shape) for shape in BANK_FORMATS)
 # 구분자 없는 계좌는 숫자열일 뿐이라 계좌·은행 라벨 바로 뒤에서만 받는다
 _LABEL = (
-    r"(?<=(?:계좌(?:번호)?|은행|뱅크|예금주[	\p{Zs}]*\S+)[은는]?"
-    r"[	\p{Zs}]*[:：]?[	\p{Zs}]*)"
+    rf"(?<=(?:계좌(?:번호)?|은행|뱅크|예금주{GAP}\S{{1,10}})[은는]?{GAP}{COLON_GAP})"
 )
 # "하나", "우리"처럼 일상어와 겹치는 은행 약칭은 컨텍스트 단어로 두면 "우리는 주문번호
 # 2024-123-456789"까지 점수가 오른다. 은행별 형식표와 맞는 번호 바로 앞에 올 때만 받는다
-_BANK_PREFIX = (
-    r"(?<=(?:국민|신한|우리|하나|기업|산업|토스)[	\p{Zs}]*[:：]?[	\p{Zs}]*)"
-)
+_BANK_PREFIX = rf"(?<=(?:국민|신한|우리|하나|기업|산업|토스){GAP}{COLON_GAP})"
 
 
 def _starts_with_date(groups):
