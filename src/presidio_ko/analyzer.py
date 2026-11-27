@@ -1,3 +1,5 @@
+import logging
+
 from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
 from presidio_analyzer.nlp_engine import NlpEngine, NlpEngineProvider
 from presidio_analyzer.predefined_recognizers import CreditCardRecognizer
@@ -36,7 +38,13 @@ def create_korean_analyzer(
         ).create_engine()
 
     registry = RecognizerRegistry(supported_languages=["ko"])
-    registry.load_predefined_recognizers(languages=["ko"], nlp_engine=nlp_engine)
+    # 다른 언어 인식기를 건너뛸 때마다 경고가 열 줄 넘게 찍힌다
+    logger = logging.getLogger("presidio-analyzer")
+    level, logger.level = logger.level, logging.ERROR
+    try:
+        registry.load_predefined_recognizers(languages=["ko"], nlp_engine=nlp_engine)
+    finally:
+        logger.level = level
     for name in _REPLACED:
         registry.remove_recognizer(name, "ko")
     upstream = [

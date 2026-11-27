@@ -1,3 +1,6 @@
+from presidio_ko import create_korean_analyzer
+
+
 def found(analyzer, text, **kwargs):
     results = analyzer.analyze(text=text, language="ko", **kwargs)
     return {(r.entity_type, text[r.start : r.end]) for r in results}
@@ -23,3 +26,8 @@ def test_detects_rrn_and_bank_account(korean_analyzer):
         ("KR_RRN", "900101-1234567"),
         ("KR_BANK_ACCOUNT", "110-123-456789"),
     }
+
+
+def test_creating_the_analyzer_logs_no_warnings(caplog):
+    create_korean_analyzer()
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
