@@ -3,15 +3,21 @@
 from .analyzer import create_korean_analyzer
 from .korean_context_enhancer import KoreanContextAwareEnhancer
 from .kr_bank_account_recognizer import KrBankAccountRecognizer
+from .kr_person_recognizer import KrPersonRecognizer
 from .kr_phone_recognizer import KrPhoneRecognizer
 from .masking import korean_operators
 
-KOREAN_RECOGNIZERS = [KrPhoneRecognizer(), KrBankAccountRecognizer()]
+KOREAN_RECOGNIZERS = [
+    KrPhoneRecognizer(),
+    KrBankAccountRecognizer(),
+    KrPersonRecognizer(),
+]
 
 __all__ = [
     "KOREAN_RECOGNIZERS",
     "KoreanContextAwareEnhancer",
     "KrBankAccountRecognizer",
+    "KrPersonRecognizer",
     "KrPhoneRecognizer",
     "create_korean_analyzer",
     "korean_operators",
