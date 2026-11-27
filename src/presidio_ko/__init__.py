@@ -2,6 +2,7 @@
 
 from .analyzer import create_korean_analyzer
 from .korean_context_enhancer import KoreanContextAwareEnhancer
+from .kr_address_recognizer import KrAddressRecognizer
 from .kr_bank_account_recognizer import KrBankAccountRecognizer
 from .kr_person_recognizer import KrPersonRecognizer
 from .kr_phone_recognizer import KrPhoneRecognizer
@@ -11,11 +12,13 @@ KOREAN_RECOGNIZERS = [
     KrPhoneRecognizer(),
     KrBankAccountRecognizer(),
     KrPersonRecognizer(),
+    KrAddressRecognizer(),
 ]
 
 __all__ = [
     "KOREAN_RECOGNIZERS",
     "KoreanContextAwareEnhancer",
+    "KrAddressRecognizer",
     "KrBankAccountRecognizer",
     "KrPersonRecognizer",
     "KrPhoneRecognizer",
