@@ -43,6 +43,7 @@ HOSTILE = {
     "bank_prefix_repeat": "국민 " * (N // 3) + "1",
     "person_label_spaces": "성명" + " " * N + "x",
     "person_label_repeat": "성명 " * (N // 3),
+    "person_name_label_repeat": "대표 이사 주문자명 " * (N // 10),
     "person_label_colons": "성명" + ":" * N,
 }
 RECOGNIZERS = [

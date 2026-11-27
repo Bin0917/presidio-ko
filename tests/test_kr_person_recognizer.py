@@ -25,6 +25,16 @@ def labeled(text):
         ("보호자 성명: 최수진", "최수진"),
         ("임대인 성명 김철수", "김철수"),
         ("담당자 이름: 박영희", "박영희"),
+        ("수령인: 장하늘", "장하늘"),
+        ("수취인 김민수", "김민수"),
+        ("신청인: 박보검", "박보검"),
+        ("성함: 김민수", "김민수"),
+        ("계약자 손흥민", "손흥민"),
+        ("보증인 성명 이도현", "이도현"),
+        ("피보험자 윤서아", "윤서아"),
+        ("주문자명: 정해인", "정해인"),
+        ("사원명: 이지은", "이지은"),
+        ("대표 이사 김철수", "김철수"),
     ],
 )
 def test_label_gives_high_score(text, name):
@@ -40,6 +50,8 @@ def test_label_gives_high_score(text, name):
         "이름: 이체일시",
         "성명:\n김민수",  # 줄이 바뀌면 값이 아님
         "주문번호 송장번호 이체일시 사원명 서명",
+        "수령인 정보 입력",
+        "수령인 변경",
     ],
 )
 def test_label_without_a_person_gives_nothing(text):
@@ -73,6 +85,11 @@ def test_romanized_foreign_name_is_out_of_scope(korean_analyzer):
 
 def test_other_field_labels_after_a_name_label_are_not_people():
     assert labeled("보호자 연락처: 010-6543-2109") == []
+
+
+def test_form_labels_tagged_by_spacy_are_not_people(korean_analyzer):
+    assert found(korean_analyzer, "신청인: 박보검") == [("박보검", 0.85)]
+    assert found(korean_analyzer, "주소지 광주광역시 북구 용봉로 77") == []
 
 
 def test_bank_names_and_districts_are_not_people(korean_analyzer):
