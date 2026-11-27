@@ -206,3 +206,28 @@ def test_label_followed_by_a_subject_particle(text, name):
 )
 def test_two_letter_word_before_an_ending_after_a_label_scores_low(text, word):
     assert labeled(text) == [(word, 0.4)]
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("어제 김민구님이 방문했습니다.", "김민구"),
+        ("담당 직원 이상구 씨가 처리했습니다.", "이상구"),
+        ("박성군이 왔다", "박성군"),
+    ],
+)
+def test_names_ending_like_a_district_are_people(korean_analyzer, text, name):
+    assert [n for n, _ in found(korean_analyzer, text)] == [name]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "김포시 주민 센터",
+        "어제 김제시에서 왔어요",
+        "홍천군이 발표했다",
+        "연수구 주민 센터",
+    ],
+)
+def test_district_names_are_not_people(korean_analyzer, text):
+    assert found(korean_analyzer, text) == []
