@@ -45,6 +45,7 @@ _LABELED = re.compile(
 )
 _PLACE_ENDINGS = ("시", "군", "구")
 _PS_LABELS = {"PS", "PERSON"}
+_RIEUL = 8
 
 
 def _strip_suffix(word: str) -> str:
@@ -74,6 +75,18 @@ def _is_name(word: str) -> bool:
     )
 
 
+def _labeled_score(name: str) -> float | None:
+    if len(name) != 3:
+        return 0.85
+    final = (ord(name[1]) - 0xAC00) % 28
+    if name[2] == "은" and final:
+        return 0.4
+    particles = "을이과에" if final else "를는가와로에"
+    if name[2] in particles or (name[2] == "로" and final == _RIEUL):
+        return None
+    return 0.85
+
+
 class KrPersonRecognizer(EntityRecognizer):
     ENTITY = "PERSON"
 
@@ -100,9 +113,10 @@ class KrPersonRecognizer(EntityRecognizer):
                     spans[start, start + len(name)] = 0.6
         for match in _LABELED.finditer(text):
             name = _strip_suffix(match.group(1))
-            if _is_name(name):
-                start = match.start(1)
-                spans[start, start + len(name)] = 0.85
+            score = _labeled_score(name) if _is_name(name) else None
+            if score is not None:
+                span = match.start(1), match.start(1) + len(name)
+                spans[span] = max(score, spans.get(span, 0))
         return [
             RecognizerResult(self.ENTITY, start, end, score)
             for (start, end), score in spans.items()

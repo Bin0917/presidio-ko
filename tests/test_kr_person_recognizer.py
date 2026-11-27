@@ -157,3 +157,26 @@ def test_honorific_and_ending_are_stripped_together(text, name):
 )
 def test_spacy_person_strips_honorific_and_particle(korean_analyzer, text, name):
     assert [n for n, _ in found(korean_analyzer, text)] == [name]
+
+
+@pytest.mark.parametrize("label", ["수령인", "성명", "담당자", "예금주", "보호자"])
+@pytest.mark.parametrize(
+    "word",
+    ["정리를", "조건을", "한국을", "안내를", "주의를", "차이를", "한글로", "정자로"],
+)
+def test_noun_with_a_particle_after_a_label_is_not_a_name(label, word):
+    assert labeled(f"{label} {word} 입력하세요") == []
+
+
+@pytest.mark.parametrize("word", ["방법은", "기간은", "조건은"])
+def test_noun_with_a_topic_particle_after_a_label_scores_low(word):
+    assert labeled(f"성명 {word} 입력하세요") == [(word, 0.4)]
+
+
+@pytest.mark.parametrize("name", ["박하은", "김지은", "이서은", "김도이"])
+def test_name_ending_in_a_particle_letter_after_a_vowel_keeps_its_score(name):
+    assert labeled(f"예금주 {name}") == [(name, 0.85)]
+
+
+def test_name_ending_in_a_topic_particle_after_a_final_consonant_scores_low():
+    assert labeled("예금주 김정은") == [("김정은", 0.4)]
