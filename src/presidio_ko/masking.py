@@ -74,7 +74,16 @@ def mask_vehicle_plate(plate: str) -> str:
     return _mask_digits(plate, lambda i, n: not n - 4 <= i < n - 2)
 
 
+def mask_all(value: str) -> str:
+    """부분 표시 관행이 없는 식별번호는 구분자만 남기고 모두 가린다."""
+    return "".join("*" if c.isalnum() else c for c in value)
+
+
 _RULES = {
+    "KR_BRN": mask_all,
+    "KR_PASSPORT": mask_all,
+    "KR_DRIVER_LICENSE": mask_all,
+    "KR_HEALTH_INSURANCE": mask_all,
     "PERSON": mask_person,
     "KR_PHONE": mask_phone,
     "KR_RRN": mask_resident_number,

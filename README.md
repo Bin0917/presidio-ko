@@ -88,7 +88,8 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 | `EMAIL_ADDRESS` | 앞 2자만 | nguyen@example.com → ng\*\*\*\*@example.com |
 | `CREDIT_CARD` | 앞 6자리와 뒤 4자리 | 4111-1111-1111-1111 → 4111-11\*\*-\*\*\*\*-1111 |
 | `KR_VEHICLE_PLATE` | 마지막 4자리 중 앞 2자리 | 12가 3456 → 12가 \*\*56 |
-| 그 밖 | `<ENTITY>`로 치환 | `<KR_BRN>` |
+| `KR_BRN` `KR_PASSPORT` `KR_DRIVER_LICENSE` `KR_HEALTH_INSURANCE` | 구분자만 남기고 모두 | 11-17-123456-21 → \*\*-\*\*-\*\*\*\*\*\*-\*\* |
+| 그 밖 | `<ENTITY>`로 치환 | `<URL>` |
 
 주소는 상세 시작점을 인식기가 알려주지 않으므로 마스킹이 도로명·지번 뒤 첫 번호를 다시 찾아
 숫자만 가립니다(`동`·`호` 같은 단위 글자는 남습니다). 규칙을 바꾸려면 딕셔너리를 덮어씁니다.

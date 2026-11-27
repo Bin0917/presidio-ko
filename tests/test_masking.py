@@ -63,7 +63,11 @@ def mask(entity, value, operators=None):
             "서울 노원구 상계동 1234 주공아파트 7단지 701동 1102호",
             "서울 노원구 상계동 **** 주공아파트 *단지 ***동 ****호",
         ),
-        ("KR_BRN", "123-45-67890", "<KR_BRN>"),
+        ("KR_BRN", "123-45-67890", "***-**-*****"),
+        ("KR_PASSPORT", "M123A4567", "*********"),
+        ("KR_DRIVER_LICENSE", "11-17-123456-21", "**-**-******-**"),
+        ("KR_HEALTH_INSURANCE", "1-2345678901", "*-**********"),
+        ("URL", "example.com", "<URL>"),
     ],
 )
 def test_korean_masking_rules(entity, value, masked):
