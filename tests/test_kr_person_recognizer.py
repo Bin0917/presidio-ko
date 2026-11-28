@@ -231,3 +231,17 @@ def test_names_ending_like_a_district_are_people(korean_analyzer, text, name):
 )
 def test_district_names_are_not_people(korean_analyzer, text):
     assert found(korean_analyzer, text) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "담당자: 남궁지은님",
+        "성명: 남궁현이님",
+        "성명: 남궁수로씨",
+        "고객명 남궁지은씨에게",
+        "성명: 남궁지은이 왔다",
+    ],
+)
+def test_four_letter_compound_surname_name_keeps_its_last_letter(text):
+    assert [name for name, _ in labeled(text)] == [text.split()[1][:4]]

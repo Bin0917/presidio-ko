@@ -76,6 +76,8 @@ def _strip_suffix(word: str) -> str:
     for _ in range(3):
         for suffix in _SUFFIXES:
             keep = 3 if len(suffix) == 1 else 2
+            if suffix in _PARTICLES and word.startswith(_COMPOUND_SURNAMES):
+                keep = 4
             if word.endswith(suffix) and len(word) - len(suffix) >= keep:
                 word = word[: -len(suffix)]
                 break
