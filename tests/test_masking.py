@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from presidio_analyzer import RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
@@ -239,3 +241,21 @@ def test_overlap_shows_only_what_both_partial_rules_show():
         RecognizerResult("KR_PHONE", 4, 18, 0.9),
     ]
     assert korean_mask("010-1234-5678-9012", results) == "010-****-**78-****"
+
+
+def test_masking_many_results_takes_time_linear_in_their_number():
+    line = "서울 강남구 테헤란로 152 담당 김민수 010-1234-5678 "
+    text = line * 5000
+    results = []
+    for i in range(5000):
+        b = i * len(line)
+        results += [
+            RecognizerResult("KR_ADDRESS", b, b + 15, 0.9),
+            RecognizerResult("PERSON", b + 19, b + 22, 0.8),
+            RecognizerResult("KR_PHONE", b + 23, b + 36, 0.8),
+        ]
+    results.append(RecognizerResult("KR_ADDRESS", 0, len(text) // 2, 0.1))
+    start = time.perf_counter()
+    masked = korean_mask(text, results)
+    assert time.perf_counter() - start < 5
+    assert masked.count("김*수 010-1234-****") >= 2500

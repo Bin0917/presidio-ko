@@ -1,4 +1,5 @@
 import re
+from bisect import bisect_left, bisect_right
 from collections.abc import Callable
 
 from presidio_analyzer import RecognizerResult
@@ -106,9 +107,16 @@ def korean_mask(
 ) -> str:
     operators = korean_operators() if operators is None else operators
     check_results(text, results)
+    kept = drop_overlaps(results)
+    starts = [k.start for k in kept]
+    ends = [k.end for k in kept]
+    near = [[] for _ in kept]
+    for r in results:
+        for i in range(bisect_right(ends, r.start), bisect_left(starts, r.end)):
+            near[i].append(r)
     out, pos = [], 0
-    for k in drop_overlaps(results):
-        out += [text[pos : k.start], _mask_with_inner(text, k, results, operators)]
+    for k, rs in zip(kept, near, strict=True):
+        out += [text[pos : k.start], _mask_with_inner(text, k, rs, operators)]
         pos = k.end
     return "".join(out) + text[pos:]
 
@@ -119,9 +127,7 @@ def _mask_with_inner(text, k, results, operators) -> str:
     others = [
         r
         for r in results
-        if r.start < k.end
-        and k.start < r.end
-        and (r.entity_type in _RULES or r.entity_type == k.entity_type)
+        if (r.entity_type in _RULES or r.entity_type == k.entity_type)
         and (r.entity_type, r.start, r.end) != (k.entity_type, k.start, k.end)
     ]
     if not others:
