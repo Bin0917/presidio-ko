@@ -2,7 +2,7 @@ import re
 
 from presidio_analyzer import RecognizerResult
 
-from ._common import ENTITY_LABELS, drop_overlaps
+from ._common import ENTITY_LABELS, check_results, drop_overlaps
 
 _PLACEHOLDER = re.compile(r"\[[^\[\]]+\]")
 
@@ -15,6 +15,7 @@ class Pseudonymizer:
         self._numbers: dict[str, int] = {}
 
     def pseudonymize(self, text: str, results: list[RecognizerResult]) -> str:
+        check_results(text, results)
         self._reserved.update(_PLACEHOLDER.findall(text))
         out, pos = [], 0
         for r in drop_overlaps(results):

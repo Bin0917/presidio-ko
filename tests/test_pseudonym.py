@@ -1,8 +1,10 @@
 import time
 
+import pytest
 from presidio_analyzer import RecognizerResult
+from presidio_anonymizer.entities import InvalidParamError
 
-from presidio_ko import Pseudonymizer
+from presidio_ko import Pseudonymizer, korean_mask
 
 
 def pseudonymize(korean_analyzer, pseudonymizer, text):
@@ -120,3 +122,12 @@ def test_numbers_skip_placeholders_seen_in_earlier_messages():
         "김민수", [RecognizerResult("PERSON", 0, 3, 0.85)]
     )
     assert masked == "[이름2]"
+
+
+@pytest.mark.parametrize(("start", "end"), [(-1, 2), (0, 99), (2, 1)])
+def test_invalid_results_raise_like_korean_mask(start, end):
+    results = [RecognizerResult("PERSON", start, end, 1.0)]
+    with pytest.raises(InvalidParamError):
+        Pseudonymizer().pseudonymize("홍길동 abc", results)
+    with pytest.raises(InvalidParamError):
+        korean_mask("홍길동 abc", results)
