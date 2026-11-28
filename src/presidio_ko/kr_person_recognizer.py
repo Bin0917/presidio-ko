@@ -40,8 +40,9 @@ _COMPOUND_SURNAMES = ("남궁", "황보", "제갈", "선우", "서문", "독고"
 _LABELED = re.compile(
     r"(?:성명|성함|이름|예금주|고객명|대표자|대표\s?이사|담당자|수신인|받는\s?분|보내는\s?분"
     r"|임대인|임차인|근로자|환자명|보호자|수령인|수취인|신청인|계약자|보증인|피보험자"
-    r"|(?:사원|직원|주문자|구매자|신청자|작성자|가입자)명)(?:께서|[은는이가])?"
-    r"(?:[ \t]{1,3}(?:성명|이름|성함))?[ \t]{0,3}(?:[:：][ \t]{0,3})?([가-힣]+)"
+    r"|(?:사원|직원|주문자|구매자|신청자|작성자|가입자)명)"
+    r"(?:께서|(?P<subject>[이가])|[은는])?"
+    r"(?:[ \t]{1,3}(?:성명|이름|성함))?[ \t]{0,3}(?:[:：][ \t]{0,3})?(?P<name>[가-힣]+)"
 )
 _DISTRICTS = set(
     """종로구 중구 용산구 성동구 광진구 동대문구 중랑구 성북구 강북구 도봉구 노원구
@@ -101,8 +102,8 @@ def _is_name(word: str) -> bool:
     )
 
 
-def _labeled_score(word: str, name: str) -> float | None:
-    if len(name) == 2 and word != name:
+def _labeled_score(word: str, name: str, subject: bool) -> float | None:
+    if len(name) == 2 and (word != name or subject):
         return 0.4
     if len(name) != 3:
         return 0.85
@@ -140,10 +141,12 @@ class KrPersonRecognizer(EntityRecognizer):
                     start = ent.start_char + ent.text.index(name)
                     spans[start, start + len(name)] = 0.6
         for match in _LABELED.finditer(text):
-            name = _strip_suffix(match.group(1))
-            score = _labeled_score(match.group(1), name) if _is_name(name) else None
+            word = match["name"]
+            name = _strip_suffix(word)
+            subject = match["subject"] is not None
+            score = _labeled_score(word, name, subject) if _is_name(name) else None
             if score is not None:
-                span = match.start(1), match.start(1) + len(name)
+                span = match.start("name"), match.start("name") + len(name)
                 spans[span] = max(score, spans.get(span, 0))
         return [
             RecognizerResult(self.ENTITY, start, end, score)

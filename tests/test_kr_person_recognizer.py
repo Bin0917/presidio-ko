@@ -245,3 +245,17 @@ def test_district_names_are_not_people(korean_analyzer, text):
 )
 def test_four_letter_compound_surname_name_keeps_its_last_letter(text):
     assert [name for name, _ in labeled(text)] == [text.split()[1][:4]]
+
+
+@pytest.mark.parametrize(
+    ("text", "word"),
+    [
+        ("담당자가 정말 바쁩니다", "정말"),
+        ("신청인이 오늘 방문했다", "오늘"),
+        ("이름이 조금 특이하네요", "조금"),
+        ("보증인이 이미 승인했다", "이미"),
+        ("성명이 최종 확인되었습니다", "최종"),
+    ],
+)
+def test_two_letter_word_after_a_label_and_subject_particle_scores_low(text, word):
+    assert labeled(text) == [(word, 0.4)]

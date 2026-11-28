@@ -52,6 +52,7 @@ HOSTILE = {
     "person_label_repeat": "성명 " * (N // 3),
     "person_name_label_repeat": "대표 이사 주문자명 " * (N // 10),
     "person_label_colons": "성명" + ":" * N,
+    "person_subject_repeat": "성명이 " * (N // 4),
     "license_groups": "면허 " + "11 " * (N // 3),
     "license_dashes": "면허 " + "1-" * (N // 2),
     "license_mixed": "면허 " + "11-11 " * (N // 6),
