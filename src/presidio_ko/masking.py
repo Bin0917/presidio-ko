@@ -140,9 +140,7 @@ def _mask_with_inner(text, k, results, operators) -> str:
         masked = _apply(r.entity_type, original, operators)
         inside = k.start <= r.start and r.end <= k.end
         if len(masked) != len(original):
-            if not inside:
-                continue
-            if _hides(r.entity_type, operators):
+            if inside and _hides(r.entity_type, operators):
                 replaced.append(
                     RecognizerResult(
                         r.entity_type, r.start - k.start, r.end - k.start, r.score

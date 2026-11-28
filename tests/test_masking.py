@@ -259,3 +259,31 @@ def test_masking_many_results_takes_time_linear_in_their_number():
     masked = korean_mask(text, results)
     assert time.perf_counter() - start < 5
     assert masked.count("김*수 010-1234-****") >= 2500
+
+
+@pytest.mark.parametrize(
+    ("text", "results", "entity", "masked"),
+    [
+        (
+            "김민수 홍길동",
+            [
+                RecognizerResult("PERSON", 0, 3, 0.5),
+                RecognizerResult("KR_PHONE", 1, 7, 0.9),
+            ],
+            "PERSON",
+            "<PERSON>** 홍길동",
+        ),
+        (
+            "010 4111 1111 1111 1111",
+            [
+                RecognizerResult("CREDIT_CARD", 4, 23, 0.9),
+                RecognizerResult("KR_PHONE", 0, 13, 0.5),
+            ],
+            "KR_PHONE",
+            "<KR_PHONE>**** **** **** 1111",
+        ),
+    ],
+)
+def test_overlap_with_a_partial_replaced_loser_is_hidden(text, results, entity, masked):
+    operators = korean_operators() | {entity: OperatorConfig("replace")}
+    assert korean_mask(text, results, operators) == masked
