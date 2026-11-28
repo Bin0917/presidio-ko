@@ -1,7 +1,6 @@
 import pytest
-from presidio_anonymizer import AnonymizerEngine
 
-from presidio_ko import KrAddressRecognizer, korean_operators
+from presidio_ko import KrAddressRecognizer, korean_mask
 
 recognizer = KrAddressRecognizer()
 
@@ -61,6 +60,39 @@ def found(text):
             0.6,
         ),
         ("서울 강남구 테헤란로 152 역삼빌딩 10층", "서울 강남구 테헤란로 152", 0.6),
+        ("경기도 양평군 양평읍 양평로 100", "경기도 양평군 양평읍 양평로 100", 0.6),
+        (
+            "주소: 전라남도 순천시 해룡면 상삼리 123-4",
+            "전라남도 순천시 해룡면 상삼리 123-4",
+            0.5,
+        ),
+        (
+            "제주특별자치도 제주시 애월읍 애월로 1",
+            "제주특별자치도 제주시 애월읍 애월로 1",
+            0.6,
+        ),
+        ("세종시 조치원읍 세종로 2511", "세종시 조치원읍 세종로 2511", 0.6),
+        (
+            "세종특별자치시 조치원읍 새내로 1",
+            "세종특별자치시 조치원읍 새내로 1",
+            0.6,
+        ),
+        ("세종 금남면 용포로 12", "세종 금남면 용포로 12", 0.6),
+        (
+            "서울 마포구 월드컵북로 396 지하1층 입니다",
+            "서울 마포구 월드컵북로 396 지하1층",
+            0.6,
+        ),
+        (
+            "서울 강남구 테헤란로 152 래미안 퍼스티지 101동 1203호",
+            "서울 강남구 테헤란로 152 래미안 퍼스티지 101동 1203호",
+            0.6,
+        ),
+        (
+            "서울특별시 노원구 상계동 1234 주공아파트 7단지 701동 1102호",
+            "서울특별시 노원구 상계동 1234 주공아파트 7단지 701동 1102호",
+            0.5,
+        ),
     ],
 )
 def test_matches_road_and_lot_addresses(text, address, score):
@@ -70,22 +102,67 @@ def test_matches_road_and_lot_addresses(text, address, score):
 @pytest.mark.parametrize(
     "text",
     [
-        "서울 강남구에서 만나요",  # 번호 없음
+        "서울 강남구에서 만나요",
         "서울 12",
-        "우동 1408-3 센텀파크",  # 시도·시군구 없는 지번
+        "우동 1408-3 센텀파크",
         "2024년 3월 12일 회의",
-        "테헤란로 152",  # 시군구 없음
+        "테헤란로 152",
         "다시 처음으로 1번 문제를 풀어보세요.",
         "이번 연구 결과로 3명이 합격했다.",
         "요구 사항으로 5개를 정리했다.",
         "우리 가구 배송으로 2일 걸려요",
         "그는 다시 집으로 10시에 돌아왔다.",
         "연구원으로 5년 근무했다.",
-        "성남시 분당구 판교역로 235",  # 시도도 주소 라벨도 없음
+        "성남시 분당구 판교역로 235",
+        "서울 방면 도로 3개 차선이 통제됩니다.",
+        "서울 방면 경부로 5번 출구로 나가세요.",
+        "서울 이면 도로 12곳이 공사 중입니다.",
+        "부산 전면 도로 3개가 막혔다.",
+        "경기 측면 통로 2개를 확보했다.",
+        "대구 평면 도로 5개 구간이 있다.",
+        "서울 중구 을지로3가역에서 만나요",
+        "세종 방면 도로 3개 차선이 통제됩니다.",
+        "서울 종로구 종로3가역 2번 출구",
     ],
 )
 def test_ignores_non_addresses(text):
     assert found(text) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "서울 강남구 테헤란로 152,010-1234-5678",
+        "서울 강남구 테헤란로 152, 123-45-67890",
+        "경기도 양평군 양평읍 양평로 100, 02-302-7957",
+        "서울 강남구 테헤란로 152, 880214-1234567",
+    ],
+)
+def test_number_after_a_comma_is_not_read_as_a_unit(text):
+    assert [a for a, _ in found(text)] == [text[: text.index(",")]]
+
+
+@pytest.mark.parametrize(
+    ("text", "address"),
+    [
+        (
+            "서울 강남구 테헤란로 152 에서 만나서 3호 차량으로 이동하자.",
+            "서울 강남구 테헤란로 152",
+        ),
+        (
+            "서울 강남구 테헤란로 152 앞에서 같이 3호 열차를 타자.",
+            "서울 강남구 테헤란로 152",
+        ),
+        (
+            "경기도 성남시 분당구 판교역로 235 건물 앞에서 만나자 3호 차량",
+            "경기도 성남시 분당구 판교역로 235",
+        ),
+        ("서울 강남구 테헤란로 152 받는 분 김민수 101호", "서울 강남구 테헤란로 152"),
+        ("서울 강남구 역삼동 123-4 건물 3호선 역", "서울 강남구 역삼동 123-4"),
+    ],
+)
+def test_building_name_stops_at_sentence_words(text, address):
+    assert [a for a, _ in found(text)] == [address]
 
 
 def test_address_label_allows_a_missing_province():
@@ -96,9 +173,15 @@ def test_address_label_allows_a_missing_province():
 def test_analyzed_address_is_masked_after_the_building_number(korean_analyzer):
     text = "배송지는 서울 영등포구 영등포로3길 12, 101동 1001호 입니다"
     results = korean_analyzer.analyze(text=text, language="ko")
-    masked = AnonymizerEngine().anonymize(text, results, korean_operators()).text
+    masked = korean_mask(text, results)
     assert masked == "배송지는 서울 영등포구 영등포로3길 **, ***동 ****호 입니다"
 
 
 def test_street_name_without_a_building_number_is_not_cut_in_half():
     assert found("제주 서귀포시 중문관광로 72번길 방향으로 우회하세요.") == []
+
+
+def test_lot_address_in_a_numbered_ga_is_still_found():
+    assert [a for a, _ in found("서울 중구 을지로3가 5-1")] == [
+        "서울 중구 을지로3가 5-1"
+    ]

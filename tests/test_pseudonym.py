@@ -1,6 +1,10 @@
-from presidio_analyzer import RecognizerResult
+import time
 
-from presidio_ko import Pseudonymizer
+import pytest
+from presidio_analyzer import RecognizerResult
+from presidio_anonymizer.entities import InvalidParamError
+
+from presidio_ko import Pseudonymizer, korean_mask
 
 
 def pseudonymize(korean_analyzer, pseudonymizer, text):
@@ -47,13 +51,57 @@ def test_unlabeled_entity_uses_its_own_name():
     assert out == "[CRYPTO1]"
 
 
-def test_overlapping_results_keep_the_higher_score():
+def test_partial_overlap_keeps_the_loser_remainder():
     text = "홍길동010"
     results = [
         RecognizerResult("KR_PHONE", 3, 6, 0.5),
         RecognizerResult("PERSON", 0, 4, 0.9),
     ]
-    assert Pseudonymizer().pseudonymize(text, results) == "[이름1]10"
+    pseudonymizer = Pseudonymizer()
+    out = pseudonymizer.pseudonymize(text, results)
+    assert out == "[이름1][전화번호1]"
+    assert pseudonymizer.restore(out) == text
+
+
+def test_same_entity_overlaps_merge_into_one(korean_analyzer):
+    text = "서울 중구 을지로2가 50"
+    pseudonymizer = Pseudonymizer()
+    out = pseudonymize(korean_analyzer, pseudonymizer, text)
+    assert out == "[주소1]"
+    assert pseudonymizer.restore(out) == text
+
+
+def test_outer_result_wins_over_a_contained_one():
+    text = "서울 강남구 테헤란로 152 받는 분 김민수 101호"
+    start = text.index("김민수")
+    results = [
+        RecognizerResult("KR_ADDRESS", 0, len(text), 0.6),
+        RecognizerResult("PERSON", start, start + 3, 0.85),
+    ]
+    assert Pseudonymizer().pseudonymize(text, results) == "[주소1]"
+
+
+def test_no_digit_escapes_crossing_results():
+    text = "010 1234 5678 010 2345 6789"
+    results = [
+        RecognizerResult("KR_PHONE", 0, 13, 0.85),
+        RecognizerResult("CREDIT_CARD", 4, 22, 1.0),
+        RecognizerResult("KR_PHONE", 14, 27, 0.85),
+    ]
+    pseudonymizer = Pseudonymizer()
+    out = pseudonymizer.pseudonymize(text, results)
+    assert out == "[전화번호1][카드번호1][전화번호2]"
+    assert pseudonymizer.restore(out) == text
+
+
+def test_many_results_are_resolved_quickly():
+    text = "010-1234-5678\n" * 20_000
+    results = [
+        RecognizerResult("KR_PHONE", i * 14, i * 14 + 13, 0.5) for i in range(20_000)
+    ]
+    start = time.perf_counter()
+    Pseudonymizer().pseudonymize(text, results)
+    assert time.perf_counter() - start < 2
 
 
 def test_numbers_skip_placeholders_already_in_the_text():
@@ -74,3 +122,12 @@ def test_numbers_skip_placeholders_seen_in_earlier_messages():
         "김민수", [RecognizerResult("PERSON", 0, 3, 0.85)]
     )
     assert masked == "[이름2]"
+
+
+@pytest.mark.parametrize(("start", "end"), [(-1, 2), (0, 99), (2, 1)])
+def test_invalid_results_raise_like_korean_mask(start, end):
+    results = [RecognizerResult("PERSON", start, end, 1.0)]
+    with pytest.raises(InvalidParamError):
+        Pseudonymizer().pseudonymize("홍길동 abc", results)
+    with pytest.raises(InvalidParamError):
+        korean_mask("홍길동 abc", results)

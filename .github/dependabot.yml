@@ -1,4 +1,3 @@
-# workflow의 action 버전(SHA 고정)을 매주 확인해 업데이트 PR을 연다. 보안 권고가 나온 action도 여기서 잡힌다
 version: 2
 updates:
   - package-ecosystem: github-actions

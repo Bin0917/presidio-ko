@@ -29,10 +29,10 @@ def test_matches_number_after_label(text, number):
 @pytest.mark.parametrize(
     "text",
     [
-        "1-2345678901",  # 라벨 없음
+        "1-2345678901",
         "등록번호 1-2345678901",
-        "건강보험증번호 123456789",  # 9자리
-        "건강보험증번호 1-23456789012345",  # 너무 김
+        "건강보험증번호 123456789",
+        "건강보험증번호 1-23456789012345",
     ],
 )
 def test_requires_the_label_and_length(text):

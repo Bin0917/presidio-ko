@@ -2,7 +2,6 @@ from presidio_analyzer import Pattern
 
 from ._common import COLON_GAP, END, GAP, START, KoreanPatternRecognizer
 
-# 형식이 공개 표준이 아니라서 라벨 바로 뒤의 10~12자리만 받는다
 _LABEL = (
     rf"(?<=(?:건강보험증?{GAP}번호|보험증{GAP}번호|건보{GAP}번호)"
     rf"[은는]?{GAP}{COLON_GAP})"
@@ -10,8 +9,6 @@ _LABEL = (
 
 
 class KrHealthInsuranceRecognizer(KoreanPatternRecognizer):
-    """ "건강보험증번호" 같은 라벨 뒤의 건강보험증 번호를 인식한다."""
-
     ENTITY = "KR_HEALTH_INSURANCE"
 
     PATTERNS = [

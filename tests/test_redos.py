@@ -9,7 +9,9 @@ from presidio_ko import (
     KrPersonRecognizer,
     KrPhoneRecognizer,
     KrVehiclePlateRecognizer,
+    create_korean_analyzer,
 )
+from presidio_ko.kr_driver_license_recognizer import KrDriverLicenseRecognizer
 
 N = 50_000
 HOSTILE = {
@@ -17,10 +19,20 @@ HOSTILE = {
     "hangul_space": "가 " * (N // 2),
     "sigungu": "가시 " * (N // 3),
     "sigungu_nospace": "가구" * (N // 2),
+    "eupmyeon": "가면 " * (N // 3),
+    "sido_eupmyeon": "서울 " + "가읍" * (N // 2),
+    "sejong_eupmyeon": "세종 " + "가읍" * (N // 2),
+    "sejong_eupmyeon_space": "세종시 " + "가면 " * (N // 3),
     "road_without_number": "서울 강남구 " + "가로" * (N // 2),
     "ro_space": "로 " * (N // 2),
     "detail": "서울 강남구 테헤란로 1" + ", 1동" * (N // 4) + "x",
     "detail_space": "서울 강남구 테헤란로 1" + " 1동" * (N // 3) + "1",
+    "comma_unit_dashes": "서울 강남구 테헤란로 1, 1-1" + "-1" * (N // 2),
+    "comma_unit_digits": "서울 강남구 테헤란로 1, 1-" + "1" * N,
+    "building_words": "서울 강남구 테헤란로 1" + " 가1" * (N // 3) + "x",
+    "building_long_word": "서울 강남구 테헤란로 1 " + "가" * N + "서",
+    "building_particles": "서울 강남구 테헤란로 1" + " 가서" * (N // 3) + " 1호",
+    "building_digits": "서울 강남구 테헤란로 1 " + "1 " * (N // 2) + "x",
     "digits": "1" * N,
     "digits_dash": "1-" * (N // 2),
     "digits_space": "1 " * (N // 2),
@@ -38,7 +50,12 @@ HOSTILE = {
     "bank_prefix_repeat": "국민 " * (N // 3) + "1",
     "person_label_spaces": "성명" + " " * N + "x",
     "person_label_repeat": "성명 " * (N // 3),
+    "person_name_label_repeat": "대표 이사 주문자명 " * (N // 10),
     "person_label_colons": "성명" + ":" * N,
+    "person_subject_repeat": "성명이 " * (N // 4),
+    "license_groups": "면허 " + "11 " * (N // 3),
+    "license_dashes": "면허 " + "1-" * (N // 2),
+    "license_mixed": "면허 " + "11-11 " * (N // 6),
 }
 RECOGNIZERS = [
     KrAddressRecognizer(),
@@ -47,6 +64,12 @@ RECOGNIZERS = [
     KrPersonRecognizer(),
     KrPhoneRecognizer(),
     KrVehiclePlateRecognizer(),
+    KrDriverLicenseRecognizer(),
+    *[
+        r
+        for r in create_korean_analyzer().registry.recognizers
+        if r.name == "CreditCardRecognizer"
+    ],
 ]
 
 

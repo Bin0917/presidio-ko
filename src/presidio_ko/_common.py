@@ -1,13 +1,11 @@
+import heapq
 from typing import List, Optional
 
-from presidio_analyzer import Pattern, PatternRecognizer
+from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
+from presidio_anonymizer.entities import InvalidParamError
 
-# 전각 숫자·＋·괄호를 ASCII로 바꾼다. 패턴의 0·1·+ 리터럴과 계좌 필터의 "0" 비교는
-# ASCII만 보므로, 그대로 두면 전각 전화번호가 계좌로 잡힌다.
-# 한 글자씩 바꾸므로 결과 위치가 원문과 같다
-FULL_WIDTH = str.maketrans("０１２３４５６７８９＋（）", "0123456789+()")
+FULL_WIDTH = {code: code - 0xFEE0 for code in range(0xFF01, 0xFF5F)}
 
-# 가명 자리표시자에 쓰는 한국어 이름. 없는 엔티티는 엔티티 이름을 그대로 쓴다
 ENTITY_LABELS = {
     "PERSON": "이름",
     "KR_PHONE": "전화번호",
@@ -24,22 +22,57 @@ ENTITY_LABELS = {
     "EMAIL_ADDRESS": "이메일",
 }
 
-# 가변 길이 lookbehind 안의 공백은 길이를 제한한다. 무제한이면 긴 공백 입력에서
-# 매칭 시간이 입력 길이의 제곱 이상으로 늘어난다
 GAP = r"[	\p{Zs}]{0,3}"
 COLON_GAP = rf"(?:[:：]{GAP})?"
 
-# 유니코드 대시(\p{Pd}: 하이픈, en dash 등)와 OCR에 섞이는 빼기 기호(U+2212).
-# Presidio는 패턴을 regex 모듈로 컴파일하므로 \p{...}를 쓸 수 있다
 DASH = r"[\p{Pd}\u2212]"
-# 앞에 숫자나 "숫자+대시"가 붙거나 뒤에 대시·숫자가 이어지면 더 긴 번호의 일부다
 START = rf"(?<!\d)(?<!\d{DASH})"
 END = rf"(?!{DASH}?\d)"
 
 
-class KoreanPatternRecognizer(PatternRecognizer):
-    """전각 숫자를 ASCII로 바꿔 검사하는 한국어 PatternRecognizer 공통 부분."""
+def check_results(text: str, results: List[RecognizerResult]) -> None:
+    for r in results:
+        if not 0 <= r.start < r.end <= len(text):
+            raise InvalidParamError(
+                f"Invalid result {r.entity_type} {r.start}-{r.end} "
+                f"for a text of length {len(text)}"
+            )
 
+
+def drop_overlaps(results: List[RecognizerResult]) -> List[RecognizerResult]:
+    merged: List[RecognizerResult] = []
+    for r in sorted(results, key=lambda r: (r.entity_type, r.start)):
+        m = merged[-1] if merged else None
+        if m and m.entity_type == r.entity_type and r.start < m.end:
+            merged[-1] = _cut(m, m.start, max(m.end, r.end), max(m.score, r.score))
+        else:
+            merged.append(r)
+    heap = [(r.start, -r.end, i, r) for i, r in enumerate(merged)]
+    heapq.heapify(heap)
+    count = len(heap)
+    kept: List[RecognizerResult] = []
+    while heap:
+        r = heapq.heappop(heap)[3]
+        k = kept[-1] if kept else None
+        if k is None or k.end <= r.start:
+            kept.append(r)
+        elif r.end <= k.end:
+            if (r.start, r.end) == (k.start, k.end) and r.score > k.score:
+                kept[-1] = r
+        elif (r.score, r.end - r.start) > (k.score, k.end - k.start):
+            kept[-1] = _cut(k, k.start, r.start, k.score)
+            kept.append(r)
+        else:
+            heapq.heappush(heap, (k.end, -r.end, count, _cut(r, k.end, r.end, r.score)))
+            count += 1
+    return kept
+
+
+def _cut(r: RecognizerResult, start: int, end: int, score: float) -> RecognizerResult:
+    return RecognizerResult(r.entity_type, start, end, score)
+
+
+class KoreanPatternRecognizer(PatternRecognizer):
     COUNTRY_CODE = "kr"
     ENTITY: str
     PATTERNS: List[Pattern]

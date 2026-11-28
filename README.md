@@ -4,7 +4,7 @@
 
 [Microsoft Presidio](https://github.com/microsoft/presidio)로 한국어 문서의 개인정보를 찾고,
 한국식으로 가리고, LLM에 보낼 때는 되돌릴 수 있게 바꾸는 패키지입니다. 함수 한 번으로 한국어
-분석기를 만들고(`create_korean_analyzer`), 개인정보위 권고 방식의 부분 마스킹(`korean_operators`)과
+분석기를 만들고(`create_korean_analyzer`), 개인정보위 권고 방식의 부분 마스킹(`korean_mask`)과
 되돌릴 수 있는 가명 치환(`Pseudonymizer`)을 씁니다.
 
 *English:* Korean PII detection, Korean-style partial masking, and reversible pseudonymization
@@ -23,16 +23,14 @@ python -m spacy download ko_core_news_sm
 ## 빠른 시작
 
 ```python
-from presidio_anonymizer import AnonymizerEngine
-
-from presidio_ko import Pseudonymizer, create_korean_analyzer, korean_operators
+from presidio_ko import Pseudonymizer, create_korean_analyzer, korean_mask
 
 analyzer = create_korean_analyzer()
 text = "예금주 김민수, 연락처 010-1234-5678, 서울 영등포구 영등포로3길 12, 101동 1001호"
 results = analyzer.analyze(text=text, language="ko")
 
 # 한국식 부분 마스킹
-print(AnonymizerEngine().anonymize(text, results, korean_operators()).text)
+print(korean_mask(text, results))
 
 # 되돌릴 수 있는 가명 치환: LLM에는 자리표시자만 보내고 응답에서 원문을 복원한다
 pseudonymizer = Pseudonymizer()
@@ -62,19 +60,28 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 | 엔티티 | 설명 | 출처 | 비고 |
 |---|---|---|---|
 | `PERSON` | 이름 | **이 패키지** `KrPersonRecognizer` | 성명·예금주 같은 라벨 뒤 0.85, spaCy 인물 0.6. 성씨 표와 양식 라벨 차단어로 거름 |
-| `KR_ADDRESS` | 주소 | **이 패키지** `KrAddressRecognizer` | 시도(또는 `주소`·`배송지` 같은 라벨) + 시군구 + 도로명·건물번호나 지번, 뒤따르는 동·호. 건물명은 동·호가 이어질 때만 포함 |
+| `KR_ADDRESS` | 주소 | **이 패키지** `KrAddressRecognizer` | 시도(또는 `주소`·`배송지` 같은 라벨) + 시군구·읍면 + 도로명·건물번호나 지번, 뒤따르는 동·호. 건물명은 동·호가 이어질 때만 포함 |
 | `KR_PHONE` | 휴대폰·유선전화 | **이 패키지** `KrPhoneRecognizer` | `+82` 국제 형식 포함 |
 | `KR_BANK_ACCOUNT` | 계좌번호 | **이 패키지** `KrBankAccountRecognizer` | 은행명·라벨 컨텍스트, 구분자 없는 번호는 라벨 뒤만 |
 | `KR_VEHICLE_PLATE` | 차량번호 | **이 패키지** `KrVehiclePlateRecognizer` | `12가 3456`, `서울12가3456` |
 | `KR_HEALTH_INSURANCE` | 건강보험증번호 | **이 패키지** `KrHealthInsuranceRecognizer` | 공개 표준이 없어 `건강보험증번호` 같은 라벨 뒤 숫자만 |
 | `KR_RRN` `KR_FRN` `KR_BRN` | 주민·외국인·사업자등록번호 | Presidio 업스트림 | 체크섬 검증 |
-| `KR_PASSPORT` `KR_DRIVER_LICENSE` | 여권·운전면허번호 | Presidio 업스트림 | 구분자 없는 12자리 면허번호는 `운전면허` 같은 라벨 뒤만 |
+| `KR_PASSPORT` `KR_DRIVER_LICENSE` | 여권·운전면허번호 | Presidio 업스트림 | 구분자가 없거나 섞인 12자리 면허번호는 `운전면허` 같은 라벨 뒤만 |
 | `CREDIT_CARD` `EMAIL_ADDRESS` 등 | 카드·이메일 등 | Presidio 업스트림 | `ko`로 등록 |
 
 ## 한국식 마스킹
 
-`korean_operators()`는 `AnonymizerEngine.anonymize(operators=...)`에 넘기는 설정입니다.
+`korean_mask(text, results)`는 분석 결과를 아래 규칙으로 가린 문자열을 돌려줍니다.
 개인정보보호위원회 권고와 ISMS-P 관행대로 구분자(대시·공백·점)는 두고 글자·숫자만 `*`로 바꿉니다.
+결과가 겹치면 같은 종류는 하나로 합치고, 한 결과가 다른 종류를 품으면 바깥 결과를 남기되 안쪽
+결과의 규칙이 가리는 글자도 가립니다. 일부만 겹치면 점수가 높은 쪽을 남기고 진 쪽의 나머지
+조각도 진 쪽 규칙으로 가립니다. 탐지된 글자는 규칙이 표시하는 부분 말고는 드러나지 않습니다.
+겹치는 결과에 `replace`처럼 길이가 바뀌는 operator를 쓰면 자리표시자가 잘리거나
+(`<PERSON>AIL_ADDRESS>`) 다른 결과의 `*`와 섞일 수 있습니다. 이때도 가린 글자는 드러나지 않습니다.
+
+`AnonymizerEngine.anonymize`에 규칙을 직접 넘기지 말고 `korean_mask`를 쓰세요. 엔진은 기본값으로
+공백을 사이에 둔 같은 종류를 하나로 합쳐서 `010-1234-5678 010-2345-6789`의 뒤 4자리만 가리고 앞
+번호를 그대로 두며, 겹치는 결과도 정리하지 않습니다.
 
 | 엔티티 | 규칙 | 예 |
 |---|---|---|
@@ -86,7 +93,8 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 | `EMAIL_ADDRESS` | 앞 2자만 | nguyen@example.com → ng\*\*\*\*@example.com |
 | `CREDIT_CARD` | 앞 6자리와 뒤 4자리 | 4111-1111-1111-1111 → 4111-11\*\*-\*\*\*\*-1111 |
 | `KR_VEHICLE_PLATE` | 마지막 4자리 중 앞 2자리 | 12가 3456 → 12가 \*\*56 |
-| 그 밖 | `<ENTITY>`로 치환 | `<KR_BRN>` |
+| `KR_BRN` `KR_PASSPORT` `KR_DRIVER_LICENSE` `KR_HEALTH_INSURANCE` | 구분자만 남기고 모두 | 11-17-123456-21 → \*\*-\*\*-\*\*\*\*\*\*-\*\* |
+| 그 밖 | `<ENTITY>`로 치환 | `<URL>` |
 
 주소는 상세 시작점을 인식기가 알려주지 않으므로 마스킹이 도로명·지번 뒤 첫 번호를 다시 찾아
 숫자만 가립니다(`동`·`호` 같은 단위 글자는 남습니다). 규칙을 바꾸려면 딕셔너리를 덮어씁니다.
@@ -94,13 +102,18 @@ print(pseudonymizer.restore("[이름1]님께 [전화번호1]로 연락드리겠�
 ```python
 from presidio_anonymizer.entities import OperatorConfig
 
+from presidio_ko.masking import korean_operators
+
 operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
+masked = korean_mask(text, results, operators)
 ```
 
 ## 한계
 
 - **이름**: 영문 로마자 이름(`Nguyen Van An`)은 잡지 않습니다. 한국어 이름도 성씨 표에
-  없는 성이나 라벨·spaCy 단서가 없는 문맥(명함의 `과장 정재현`, 호칭만 붙은 `홍길동님`)에서는
+  없는 성이나 라벨·spaCy 단서가 없는 문맥(명함의 `과장 정재현`, 호칭만 붙은 `이영희씨`,
+  `대표 노승현`·`작성자 이도현`처럼 뒤에 `정보`·`전화` 같은 일반어도 흔한 라벨, 머리글 행에만
+  `이름`이 있는 표나 라벨 다음 줄에 쓴 이름)에서는
   놓칠 수 있습니다. `ko_core_news_sm`의 인물 인식이 약해서입니다. 네 글자는 복성(`남궁민수`)만
   이름으로 보고, `김치찌개`처럼 성씨로 시작하는 두 글자 일반어는 일부(`김밥`, `김치`, `조회`)만
   거릅니다.
@@ -110,6 +123,14 @@ operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
   있습니다.
 - **차량번호**: `호` 용도문자(렌터카)는 호수(`101호 1234`)와 구별할 수 없어 뺍니다. 바로 뒤에 `원`이 붙으면 가격(`10가 5000원`)으로 보고 뺍니다.
 - **건강보험증번호**: 라벨이 없으면 잡지 않습니다.
+- **카드번호**: 업스트림 패턴의 `\b` 경계를 더 긴 번호의 일부를 막는 경계로 바꿨습니다. 그래서
+  뒤에 대시로 숫자 묶음이 더 붙은 `4111-1111-1111-1111-2222`는 잡지 않습니다. 전화번호가 있으면
+  전화번호를 모두 지운 사본에서 카드를 한 번 더 찾습니다. 그래서 전화번호에 걸친 카드
+  후보(`010 1234 5678 010 2345 6789`의 가운데 16자리)는 버리고 `02 1234 5678 4854 2143 0443 2442`의
+  카드는 잡습니다. 다시 찾은
+  카드나 전화번호가 덮지 못한 숫자가 남는 후보(`010 4111 1111 1111 1111`)는 카드로 남깁니다.
+- **이메일**: 업스트림 인식기는 앞에 글자와 `/`가 붙은 이메일(`주문/kim99@corp.co.kr`)을 놓치고
+  도메인만 `URL`로 냅니다. `/`가 맨 앞이거나 공백 뒤면 잡습니다.
 - **업스트림이 같이 내는 엔티티**: `URL`(이메일 도메인), `DATE_TIME` 등은 그대로 나옵니다.
   필요 없으면 `analyze(entities=[...])`로 고르세요.
 
@@ -246,7 +267,7 @@ KrRrnRecognizer(context=KrRrnRecognizer.CONTEXT + ["주민등록번호", "주민
 - 괄호 지역번호도 잡습니다: `(02) 123-4567`, `(010) 1234-5678`, `Tel. 02)123-4567`, `(02)-123-4567`.
 - 앞자리 `0` 대신 국제 형식 `+82`도 잡습니다(`+82 10-1234-5678`, `+821012345678`,
   `0`을 남겨 쓴 `+82 010-1234-5678`, `+82 (0)10-1234-5678`, `(+82) 10-1234-5678`).
-- 구분자는 가로 공백, 점, 그리고 하이픈과 en dash 같은 유니코드 대시(`\p{Pd}`)와 빼기
+- 구분자는 가로 공백, 점, 가운뎃점(`·`, `ㆍ`, `・`), 그리고 하이픈과 en dash 같은 유니코드 대시(`\p{Pd}`)와 빼기
   기호(U+2212)입니다. PDF·OCR 추출문에 섞여 나오는 대시도 잡고, 대시 앞뒤의 공백도
   허용합니다(`010 - 1234 - 5678`). 줄바꿈은 구분자로 보지 않습니다. 표의 열처럼 줄마다
   따로 적힌 숫자를 하나의 번호로 잇지 않기 위해서입니다.
@@ -257,8 +278,10 @@ KrRrnRecognizer(context=KrRrnRecognizer.CONTEXT + ["주민등록번호", "주민
   없는 번호만 제외합니다
   (`ORD01012345678`은 ID로 보고, `HP010-1234-5678`은 잡습니다).
 - 구분자 없는 유선번호(`0212345678`)는 다른 숫자열과 구분하기 어려워 잡지 않습니다.
-- 전각 숫자(`０１０-１２３４-５６７８`)와 전각 `＋`도 같은 번호로 잡습니다. 계좌 recognizer도 같은
-  처리를 해서 전각 전화번호를 계좌로 오인하지 않습니다.
+- 전각 숫자(`０１０-１２３４-５６７８`)와 전각 `＋`도 같은 번호로 잡습니다.
+  `create_korean_analyzer()`는 분석 전에 전각 블록(U+FF01~U+FF5E) 전체를 반각으로 1:1
+  바꾸므로 주민번호, 카드, 여권(`Ｍ１２３Ａ４５６７`), 면허, 이메일도 전각으로 적힌 그대로
+  원문 위치에서 잡힙니다.
 - 잡지 않는 것: `080` 수신자부담, `15XX`·`16XX`·`18XX` 대표번호. 개인 연락처가 아닌 기업
   번호라서 잡으면 오탐만 늘어납니다.
 

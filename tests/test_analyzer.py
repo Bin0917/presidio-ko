@@ -1,4 +1,5 @@
 import logging
+import random
 
 import pytest
 
@@ -22,6 +23,29 @@ def test_detects_card_passport_and_license(korean_analyzer):
         ("KR_PASSPORT", "M123A4567"),
         ("KR_DRIVER_LICENSE", "11-17-123456-21"),
     }
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["연락처 010-1234-5678 010-2345-6789", "연락처 010 1234 5678 010 2345 6789"],
+)
+def test_two_phone_numbers_are_not_a_card_number(korean_analyzer, text):
+    assert found(korean_analyzer, text) == {
+        ("KR_PHONE", text[4:17]),
+        ("KR_PHONE", text[18:]),
+    }
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        ("4111111111111111", "5500000000000004"),
+        ("4111 1111 1111 1111", "5500 0000 0000 0004"),
+    ],
+)
+def test_cards_next_to_each_other_are_both_found(korean_analyzer, first, second):
+    cards = found(korean_analyzer, f"카드 {first} {second}")
+    assert {v for e, v in cards if e == "CREDIT_CARD"} == {first, second}
 
 
 def test_detects_rrn_and_bank_account(korean_analyzer):
@@ -55,3 +79,82 @@ def test_korean_rrn_labels_raise_the_score(korean_analyzer, label):
         if r.entity_type == "KR_RRN"
     ]
     assert result.score >= 0.85
+
+
+@pytest.mark.parametrize(
+    ("text", "entity", "value"),
+    [
+        (
+            "주민번호 ９００１０１-１２３４５６８",
+            "KR_RRN",
+            "９００１０１-１２３４５６８",
+        ),
+        (
+            "카드 ４１１１-１１１１-１１１１-１１１１",
+            "CREDIT_CARD",
+            "４１１１-１１１１-１１１１-１１１１",
+        ),
+        ("여권번호 Ｍ１２３Ａ４５６７", "KR_PASSPORT", "Ｍ１２３Ａ４５６７"),
+        (
+            "운전면허 １１-１７-１２３４５６-２１",
+            "KR_DRIVER_LICENSE",
+            "１１-１７-１２３４５６-２１",
+        ),
+        ("사업자 ２２０－８１－６２５１７", "KR_BRN", "２２０－８１－６２５１７"),
+        ("연락처 ０１０．１２３４．５６７８", "KR_PHONE", "０１０．１２３４．５６７８"),
+        (
+            "메일 ｈｏｎｇ＠ｅｘａｍｐｌｅ．ｃｏｍ",
+            "EMAIL_ADDRESS",
+            "ｈｏｎｇ＠ｅｘａｍｐｌｅ．ｃｏｍ",
+        ),
+    ],
+)
+def test_full_width_characters_are_detected_at_their_original_place(
+    korean_analyzer, text, entity, value
+):
+    assert (entity, value) in found(korean_analyzer, text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["전화 02 123 4567 3577 5180 8602 6315", "전화 02 123 4567 6011 9799 3811 9103"],
+)
+def test_card_after_a_phone_is_found_when_a_candidate_crosses_the_phone(
+    korean_analyzer, text
+):
+    assert found(korean_analyzer, text) >= {
+        ("KR_PHONE", "02 123 4567"),
+        ("CREDIT_CARD", text[15:]),
+    }
+
+
+def test_card_right_after_a_mobile_prefix_is_found(korean_analyzer):
+    text = "연락처 010 4111 1111 1111 1111"
+    assert ("CREDIT_CARD", "4111 1111 1111 1111") in found(korean_analyzer, text)
+
+
+def luhn_card(rng):
+    body = "4" + "".join(rng.choice("0123456789") for _ in range(14))
+    total = 0
+    for i, d in enumerate(reversed(body)):
+        n = int(d) * (2 if i % 2 == 0 else 1)
+        total += n - 9 if n > 9 else n
+    return body + str((10 - total % 10) % 10)
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_spaced_card_after_a_spaced_phone_is_found_whole(korean_analyzer, seed):
+    rng = random.Random(seed)
+    card = luhn_card(rng)
+    phone = rng.choice(["02 1234 5678", "02 123 4567", "010 1234 5678"])
+    spaced = " ".join(card[i : i + 4] for i in range(0, 16, 4))
+    text = f"전화 {phone} {spaced}"
+    assert found(korean_analyzer, text) >= {
+        ("KR_PHONE", phone),
+        ("CREDIT_CARD", spaced),
+    }
+
+
+def test_card_after_a_phone_without_a_luhn_crossing_is_found(korean_analyzer):
+    text = "전화 02 1234 5678 4854 2143 0443 2442"
+    assert ("CREDIT_CARD", "4854 2143 0443 2442") in found(korean_analyzer, text)

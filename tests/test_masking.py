@@ -1,9 +1,13 @@
+import time
+
 import pytest
 from presidio_analyzer import RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-from presidio_ko import korean_operators
+import presidio_ko
+from presidio_ko import Pseudonymizer, korean_mask
+from presidio_ko.masking import korean_operators
 
 
 def mask(entity, value, operators=None):
@@ -30,6 +34,7 @@ def mask(entity, value, operators=None):
         ("KR_BANK_ACCOUNT", "123456-78-901234", "123456-**-****34"),
         ("KR_BANK_ACCOUNT", "3333041234567", "333********67"),
         ("EMAIL_ADDRESS", "nguyen@example.com", "ng****@example.com"),
+        ("EMAIL_ADDRESS", "ｈｏｎｇ＠ｘ．ｃｏｍ", "ｈｏ****＠ｘ．ｃｏｍ"),
         ("CREDIT_CARD", "4111-1111-1111-1111", "4111-11**-****-1111"),
         ("KR_VEHICLE_PLATE", "12가 3456", "12가 **56"),
         ("KR_ADDRESS", "서울 영등포구 영등포로3길 12", "서울 영등포구 영등포로3길 **"),
@@ -58,7 +63,16 @@ def mask(entity, value, operators=None):
             "성남시 분당구 판교역로 235, A동 301호",
             "성남시 분당구 판교역로 ***, *동 ***호",
         ),
-        ("KR_BRN", "123-45-67890", "<KR_BRN>"),
+        (
+            "KR_ADDRESS",
+            "서울 노원구 상계동 1234 주공아파트 7단지 701동 1102호",
+            "서울 노원구 상계동 **** 주공아파트 *단지 ***동 ****호",
+        ),
+        ("KR_BRN", "123-45-67890", "***-**-*****"),
+        ("KR_PASSPORT", "M123A4567", "*********"),
+        ("KR_DRIVER_LICENSE", "11-17-123456-21", "**-**-******-**"),
+        ("KR_HEALTH_INSURANCE", "1-2345678901", "*-**********"),
+        ("URL", "example.com", "<URL>"),
     ],
 )
 def test_korean_masking_rules(entity, value, masked):
@@ -68,3 +82,208 @@ def test_korean_masking_rules(entity, value, masked):
 def test_user_can_override_a_rule():
     operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
     assert mask("KR_PHONE", "010-1234-5678", operators) == "<KR_PHONE>"
+
+
+def test_korean_mask_masks_neighbours_separately(korean_analyzer):
+    text = "연락처 010-1234-5678 010-2345-6789 이메일 abcd@x.com efgh@y.com"
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == (
+        "연락처 010-1234-**** 010-2345-**** 이메일 ab****@x.com ef****@y.com"
+    )
+
+
+def test_korean_mask_hides_what_either_nested_rule_hides():
+    text = "번호 110-123-456789"
+    results = [
+        RecognizerResult("KR_BANK_ACCOUNT", 3, 17, 0.75),
+        RecognizerResult("KR_PHONE", 7, 17, 0.4),
+    ]
+    assert korean_mask(text, results) == "번호 110-***-******"
+
+
+def test_korean_mask_merges_overlapping_results_of_one_entity(korean_analyzer):
+    text = "서울 중구 을지로2가 50"
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == "서울 중구 을지로2가 **"
+
+
+def test_korean_mask_masks_the_remainder_of_a_partial_loser():
+    results = [
+        RecognizerResult("PERSON", 0, 4, 0.9),
+        RecognizerResult("KR_PHONE", 3, 6, 0.5),
+    ]
+    assert korean_mask("홍길동010", results) == "홍*동***"
+
+
+def test_korean_mask_masks_a_name_inside_an_address():
+    text = "서울 강남구 테헤란로 152 받는 분 김민수 101호"
+    start = text.index("김민수")
+    results = [
+        RecognizerResult("KR_ADDRESS", 0, len(text), 0.6),
+        RecognizerResult("PERSON", start, start + 3, 0.85),
+    ]
+    assert korean_mask(text, results) == "서울 강남구 테헤란로 *** 받는 분 김*수 ***호"
+
+
+def test_name_after_an_address_is_masked_as_a_name(korean_analyzer):
+    text = "서울 강남구 테헤란로 152 받는 분 김민수 101호"
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == "서울 강남구 테헤란로 *** 받는 분 김*수 101호"
+
+
+def test_korean_mask_takes_custom_operators():
+    results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
+    operators = korean_operators() | {"KR_PHONE": OperatorConfig("replace")}
+    assert korean_mask("010-1234-5678", results, operators) == "<KR_PHONE>"
+
+
+def test_korean_mask_keeps_an_empty_operator_dict():
+    results = [RecognizerResult("KR_PHONE", 0, 13, 0.9)]
+    assert korean_mask("010-1234-5678", results, {}) == "<KR_PHONE>"
+
+
+def test_operators_are_not_exported_at_the_top_level():
+    assert "korean_operators" not in presidio_ko.__all__
+    assert not hasattr(presidio_ko, "korean_operators")
+
+
+@pytest.mark.parametrize(
+    ("text", "masked", "pseudonymized"),
+    [
+        ("서울 종로구 종로1가 1", "서울 종로구 종로1가 *", "[주소1]"),
+        (
+            "서울 중구 충무로2가 60-1, 101호",
+            "서울 중구 충무로2가 **-*, ***호",
+            "[주소1]",
+        ),
+        (
+            "주소: 서울 중구 을지로3가 100 을지빌딩 502호",
+            "주소: 서울 중구 을지로3가 *** 을지빌딩 ***호",
+            "주소: [주소1]",
+        ),
+        ("서울 종로구 종로3가 1번지 3층", "서울 종로구 종로3가 *번지 *층", "[주소1]"),
+        (
+            "서울 강남구 테헤란로 152,010-1234-5678",
+            "서울 강남구 테헤란로 ***,010-1234-****",
+            "[주소1],[전화번호1]",
+        ),
+        (
+            "경기도 양평군 양평읍 양평로 100, 02-302-7957",
+            "경기도 양평군 양평읍 양평로 ***, 02-302-****",
+            "[주소1], [전화번호1]",
+        ),
+        (
+            "연락처 010 1234 5678 010 2345 6789",
+            "연락처 010 1234 **** 010 2345 ****",
+            "연락처 [전화번호1] [전화번호2]",
+        ),
+    ],
+)
+def test_review_repros_mask_every_detected_character(
+    korean_analyzer, text, masked, pseudonymized
+):
+    results = korean_analyzer.analyze(text=text, language="ko")
+    assert korean_mask(text, results) == masked
+    pseudonymizer = Pseudonymizer()
+    assert pseudonymizer.pseudonymize(text, results) == pseudonymized
+    assert pseudonymizer.restore(pseudonymized) == text
+
+
+NESTED_TEXT = "서울 강남구 테헤란로 152 담당 김민수 대리 101호"
+NESTED_RESULTS = [
+    RecognizerResult("KR_ADDRESS", 0, len(NESTED_TEXT), 0.6),
+    RecognizerResult(
+        "PERSON", NESTED_TEXT.index("김"), NESTED_TEXT.index("김") + 3, 0.85
+    ),
+]
+OPERATORS = {
+    "rule": None,
+    "replace": OperatorConfig("replace"),
+    "redact": OperatorConfig("redact"),
+    "hash": OperatorConfig("hash"),
+    "keep": OperatorConfig("keep"),
+    "mask": OperatorConfig(
+        "mask", {"masking_char": "#", "chars_to_mask": 3, "from_end": True}
+    ),
+    "grow": OperatorConfig("custom", {"lambda": lambda value: value + "!"}),
+}
+
+
+def test_name_inside_an_address_takes_its_own_replace_operator():
+    operators = korean_operators() | {"PERSON": OperatorConfig("replace")}
+    assert korean_mask(NESTED_TEXT, NESTED_RESULTS, operators) == (
+        "서울 강남구 테헤란로 *** 담당 <PERSON> 대리 ***호"
+    )
+
+
+@pytest.mark.parametrize("outer", OPERATORS, ids=str)
+@pytest.mark.parametrize("inner", [k for k in OPERATORS if k != "keep"], ids=str)
+def test_no_operator_pair_reveals_a_nested_name(outer, inner):
+    operators = korean_operators()
+    for entity, name in (("KR_ADDRESS", outer), ("PERSON", inner)):
+        if OPERATORS[name] is not None:
+            operators[entity] = OPERATORS[name]
+    assert "민" not in korean_mask(NESTED_TEXT, NESTED_RESULTS, operators)
+
+
+def test_remainder_of_a_partial_loser_hides_what_its_whole_rule_hides():
+    results = [
+        RecognizerResult("KR_BRN", 0, 8, 0.9),
+        RecognizerResult("CREDIT_CARD", 3, 22, 0.5),
+    ]
+    masked = korean_mask("AB 4111-1111-1111-1111", results)
+    assert masked == "** ****-11**-****-1111"
+
+
+def test_overlap_shows_only_what_both_partial_rules_show():
+    results = [
+        RecognizerResult("KR_BANK_ACCOUNT", 0, 13, 0.5),
+        RecognizerResult("KR_PHONE", 4, 18, 0.9),
+    ]
+    assert korean_mask("010-1234-5678-9012", results) == "010-****-**78-****"
+
+
+def test_masking_many_results_takes_time_linear_in_their_number():
+    line = "서울 강남구 테헤란로 152 담당 김민수 010-1234-5678 "
+    text = line * 5000
+    results = []
+    for i in range(5000):
+        b = i * len(line)
+        results += [
+            RecognizerResult("KR_ADDRESS", b, b + 15, 0.9),
+            RecognizerResult("PERSON", b + 19, b + 22, 0.8),
+            RecognizerResult("KR_PHONE", b + 23, b + 36, 0.8),
+        ]
+    results.append(RecognizerResult("KR_ADDRESS", 0, len(text) // 2, 0.1))
+    start = time.perf_counter()
+    masked = korean_mask(text, results)
+    assert time.perf_counter() - start < 5
+    assert masked.count("김*수 010-1234-****") >= 2500
+
+
+@pytest.mark.parametrize(
+    ("text", "results", "entity", "masked"),
+    [
+        (
+            "김민수 홍길동",
+            [
+                RecognizerResult("PERSON", 0, 3, 0.5),
+                RecognizerResult("KR_PHONE", 1, 7, 0.9),
+            ],
+            "PERSON",
+            "<PERSON>** 홍길동",
+        ),
+        (
+            "010 4111 1111 1111 1111",
+            [
+                RecognizerResult("CREDIT_CARD", 4, 23, 0.9),
+                RecognizerResult("KR_PHONE", 0, 13, 0.5),
+            ],
+            "KR_PHONE",
+            "<KR_PHONE>**** **** **** 1111",
+        ),
+    ],
+)
+def test_overlap_with_a_partial_replaced_loser_is_hidden(text, results, entity, masked):
+    operators = korean_operators() | {entity: OperatorConfig("replace")}
+    assert korean_mask(text, results, operators) == masked
