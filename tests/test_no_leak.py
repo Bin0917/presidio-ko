@@ -85,7 +85,7 @@ def generate(rng):
             parts.append(sep)
             pos += len(sep)
         value = make(rng)
-        if rng.random() < 0.5 and entity != "KR_BANK_ACCOUNT":
+        if rng.random() < 0.5 and entity not in ("KR_BANK_ACCOUNT", "PERSON"):
             label = ""
         parts.append(label + value)
         values.append((entity, pos + len(label), value))
@@ -101,6 +101,13 @@ def cases(n):
 @pytest.mark.parametrize(("text", "values"), cases(500))
 def test_no_hidden_run_survives(korean_analyzer, text, values):
     results = korean_analyzer.analyze(text=text, language="ko")
+    covered = {i for r in results for i in range(r.start, r.end)}
+    missed = [
+        value
+        for _, start, value in values
+        if not covered.issuperset(range(start, start + len(value)))
+    ]
+    assert missed == [], text
     detected = [
         (entity, value)
         for entity, start, value in values
