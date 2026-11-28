@@ -54,6 +54,7 @@ HOSTILE = {
     "person_label_colons": "성명" + ":" * N,
     "license_groups": "면허 " + "11 " * (N // 3),
     "license_dashes": "면허 " + "1-" * (N // 2),
+    "license_mixed": "면허 " + "11-11 " * (N // 6),
 }
 RECOGNIZERS = [
     KrAddressRecognizer(),

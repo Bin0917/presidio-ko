@@ -38,6 +38,28 @@ def test_license_with_a_label_or_separators_is_detected(korean_analyzer, text):
     assert "KR_DRIVER_LICENSE" in kinds
 
 
+@pytest.mark.parametrize(
+    ("text", "value"),
+    [
+        ("운전면허 11-17 123456-21", "11-17 123456-21"),
+        ("운전면허 1117123456 21", "1117123456 21"),
+        ("운전면허: 11-17-123456 21", "11-17-123456 21"),
+        ("면허번호 1117-123456-21", "1117-123456-21"),
+        ("운전면허 １１－１７ １２３４５６－２１", "１１－１７ １２３４５６－２１"),
+    ],
+)
+def test_labeled_license_with_mixed_separators_is_detected_whole(
+    korean_analyzer, text, value
+):
+    assert ("KR_DRIVER_LICENSE", value) in entities(korean_analyzer, text)
+
+
+@pytest.mark.parametrize("text", ["번호 11-17 123456-21", "코드 1117123456 21"])
+def test_unlabeled_mixed_separators_are_not_a_license(korean_analyzer, text):
+    kinds = {kind for kind, _ in entities(korean_analyzer, text)}
+    assert "KR_DRIVER_LICENSE" not in kinds
+
+
 def test_account_and_insurance_numbers_win_over_license(korean_analyzer):
     account = entities(korean_analyzer, "계좌번호 110123456789")
     insurance = entities(korean_analyzer, "건강보험증번호 112233445566")
