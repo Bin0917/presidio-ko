@@ -1,4 +1,5 @@
 import logging
+import random
 
 import pytest
 
@@ -130,3 +131,30 @@ def test_card_after_a_phone_is_found_when_a_candidate_crosses_the_phone(
 def test_card_right_after_a_mobile_prefix_is_found(korean_analyzer):
     text = "연락처 010 4111 1111 1111 1111"
     assert ("CREDIT_CARD", "4111 1111 1111 1111") in found(korean_analyzer, text)
+
+
+def luhn_card(rng):
+    body = "4" + "".join(rng.choice("0123456789") for _ in range(14))
+    total = 0
+    for i, d in enumerate(reversed(body)):
+        n = int(d) * (2 if i % 2 == 0 else 1)
+        total += n - 9 if n > 9 else n
+    return body + str((10 - total % 10) % 10)
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_spaced_card_after_a_spaced_phone_is_found_whole(korean_analyzer, seed):
+    rng = random.Random(seed)
+    card = luhn_card(rng)
+    phone = rng.choice(["02 1234 5678", "02 123 4567", "010 1234 5678"])
+    spaced = " ".join(card[i : i + 4] for i in range(0, 16, 4))
+    text = f"전화 {phone} {spaced}"
+    assert found(korean_analyzer, text) >= {
+        ("KR_PHONE", phone),
+        ("CREDIT_CARD", spaced),
+    }
+
+
+def test_card_after_a_phone_without_a_luhn_crossing_is_found(korean_analyzer):
+    text = "전화 02 1234 5678 4854 2143 0443 2442"
+    assert ("CREDIT_CARD", "4854 2143 0443 2442") in found(korean_analyzer, text)

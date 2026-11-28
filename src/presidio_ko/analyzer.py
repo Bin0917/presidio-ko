@@ -34,23 +34,16 @@ class _CardRecognizer(CreditCardRecognizer):
     def analyze(self, text, entities, nlp_artifacts=None, regex_flags=None):
         cards = super().analyze(text, entities, nlp_artifacts, regex_flags)
         phones = self._PHONE.analyze(text, ["KR_PHONE"])
-        crossing = [
-            (card, p)
-            for card in cards
-            for p in phones
-            if p.start < card.start < p.end < card.end
-            or card.start < p.start < card.end < p.end
-        ]
-        if not crossing:
+        if not phones:
             return cards
-        blanked = text
-        for _, p in crossing:
-            blanked = blanked[: p.start] + "x" * (p.end - p.start) + blanked[p.end :]
-        found = super().analyze(blanked, entities, nlp_artifacts, regex_flags)
+        blanked = list(text)
+        for p in phones:
+            blanked[p.start : p.end] = "x" * (p.end - p.start)
+        found = super().analyze("".join(blanked), entities, nlp_artifacts, regex_flags)
         covered = {i for r in found + phones for i in range(r.start, r.end)}
         return found + [
             card
-            for card in {card for card, _ in crossing}
+            for card in cards
             if any(
                 text[i].isdigit() and i not in covered
                 for i in range(card.start, card.end)
